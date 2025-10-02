@@ -16,6 +16,26 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 
 
+# ZMIANA #1: Definicja AutoResizingTextEdit
+class AutoResizingTextEdit(QTextEdit):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.textChanged.connect(self.resize_for_content)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
+        self.setMinimumHeight(40)
+        self.max_height = 600  # lub inna sensowna granica
+
+    def resize_for_content(self):
+        doc = self.document()
+        if doc is None:
+            return
+        doc_height = doc.size().height()
+        h = max(40, min(int(doc_height) + 12, self.max_height))
+        self.setMinimumHeight(h)  # Można też ustawić maxHeight jeśli potrzebne
+        self.updateGeometry()
+
+
 class SpeakerSection(QWidget):
     def __init__(self, speaker_num, side):
         super().__init__()
@@ -31,7 +51,8 @@ class SpeakerSection(QWidget):
         header.setFont(header_font)
         layout.addWidget(header)
 
-        self.info_text = QTextEdit()
+        # ZMIANA #2: Zamiana klasy na AutoResizingTextEdit dla informacji
+        self.info_text = AutoResizingTextEdit()
         self.info_text.setPlaceholderText(
             f"Informacje mówcy {self.speaker_num} {self.side}"
         )
@@ -43,14 +64,15 @@ class SpeakerSection(QWidget):
         questions_group = QGroupBox("Pytania")
         q_layout = QVBoxLayout()
 
-        self.question1 = QTextEdit()
+        # ZMIANA #3: Pytania jako AutoResizingTextEdit
+        self.question1 = AutoResizingTextEdit()
         self.question1.setPlaceholderText("Pytanie 1")
         self.question1.setMinimumHeight(60)
         self.question1.setSizePolicy(
             QSizePolicy.Expanding, QSizePolicy.MinimumExpanding
         )
 
-        self.question2 = QTextEdit()
+        self.question2 = AutoResizingTextEdit()
         self.question2.setPlaceholderText("Pytanie 2")
         self.question2.setMinimumHeight(60)
         self.question2.setSizePolicy(
@@ -61,6 +83,8 @@ class SpeakerSection(QWidget):
         q_layout.addWidget(self.question2)
         questions_group.setLayout(q_layout)
 
+        layout.addWidget(questions_group)
+
         self.setLayout(layout)
 
 
@@ -68,7 +92,9 @@ class AdVocemSection(QWidget):
     def __init__(self, title):
         super().__init__()
         layout = QVBoxLayout()
-        self.text_edit = QTextEdit()
+        self.text_edit = (
+            AutoResizingTextEdit()
+        )  # ZMIANA #4: tutaj również aby było spójnie
         self.text_edit.setPlaceholderText(title)
         self.text_edit.setMinimumHeight(120)
         self.text_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -102,7 +128,7 @@ class TimerPanel(QWidget):
 class DebateJudgeApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Sędzia Debat Oksfordzkich")
+        self.setWindowTitle("OksfordOS")
         self.setGeometry(100, 100, 1300, 900)
 
         self.init_ui()
@@ -132,7 +158,7 @@ class DebateJudgeApp(QMainWindow):
             self.speakers.append(prop)
             self.speakers.append(opp)
             self.speaker_grid.addWidget(prop, i, 0)
-            self.speaker_grid.addWidget(prop, i, 1)
+            self.speaker_grid.addWidget(opp, i, 1)
 
         right_layout.addLayout(self.speaker_grid)
 
