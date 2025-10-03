@@ -11,9 +11,10 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QGridLayout,
+    QShortcut,
 )
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QKeySequence
 
 
 # ZMIANA #1: Definicja AutoResizingTextEdit
@@ -21,7 +22,7 @@ class AutoResizingTextEdit(QTextEdit):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.textChanged.connect(self.resize_for_content)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)  # type: ignore
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
         self.setMinimumHeight(40)
         self.max_height = 600  # lub inna sensowna granica
@@ -87,6 +88,12 @@ class SpeakerSection(QWidget):
 
         self.setLayout(layout)
 
+    def create_new_section(self):
+        cursor = self.info_text.textCursor()
+        cursor.insertText("\n--- Nowa Sekcja ---\n")
+        self.info_text.setTextCursor(cursor)
+        self.info_text.setFocus()
+
 
 class AdVocemSection(QWidget):
     def __init__(self, title):
@@ -118,7 +125,7 @@ class TimerPanel(QWidget):
         self.question_timer_label.setAlignment(Qt.AlignCenter)  # type: ignore
         self.question_timer_label.setFont(QFont("Arial", 18))
 
-        layout.addStretch()
+        # layout.addStretch()
         layout.addWidget(self.main_timer_label)
         layout.addWidget(self.question_timer_label)
         layout.addStretch()
@@ -131,7 +138,11 @@ class DebateJudgeApp(QMainWindow):
         self.setWindowTitle("OksfordOS")
         self.setGeometry(100, 100, 1300, 900)
 
+        self.current_speaker_index = 0
+        self.current_section_index = 0  # 0=info, 1=question1, 2=question2
+
         self.init_ui()
+        self.setup_shortcuts()
 
     def init_ui(self):
         main_widget = QWidget()
@@ -139,9 +150,7 @@ class DebateJudgeApp(QMainWindow):
 
         # Timer panel on the Left
         self.timer_panel = TimerPanel()
-        self.timer_panel.setFixedWidth(
-            250
-        )  # wydaje mi się że to może odpowiadać za błąd z niezmieszczeniem licznika
+        self.timer_panel.setFixedWidth(180)
 
         # Right Panel for speakers and ad vocem
         right_container = QWidget()
@@ -184,6 +193,53 @@ class DebateJudgeApp(QMainWindow):
 
         main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
+
+    def setup_shortcuts(self):
+        QShortcut(QKeySequence("Ctrl+l"), self, self.next_section)
+        QShortcut(QKeySequence("Ctrl+h"), self, self.previous_section)
+        QShortcut(QKeySequence("Alt+l"), self, self.next_speaker)
+        QShortcut(QKeySequence("Alt+h"), self, self.previous_speaker)
+        QShortcut(QKeySequence("Ctrl+Return"), self, self.create_section)
+
+    def focus_current_section(self):
+        speaker = self.speakers[self.current_speaker_index]
+        if self.current_section_index == 0:
+            speaker.info_text.setFocus()
+        elif self.current_section_index == 1:
+            speaker.question1.setFocus()
+        elif self.current_section_index == 2:
+            speaker.question2.setFocus()
+
+    def next_section(self):
+        self.current_section_index = (self.current_section_index + 1) % 3
+        self.focus_current_section()
+
+    def previous_section(self):
+        self.current_section_index = (self.current_section_index - 1) % 3
+        self.focus_current_section()
+
+    def next_speaker(self):
+        self.current_speaker_index = (self.current_speaker_index + 1) % len(
+            self.speakers
+        )
+        self.current_section_index = 0
+        self.focus_current_section()
+
+    def previous_speaker(self):
+        self.current_speaker_index = (self.current_speaker_index - 1) % len(
+            self.speakers
+        )
+        self.current_section_index = 0
+        self.focus_current_section()
+
+    def create_section(self):
+        # Insert new section marker in info_text of current speaker and focus it
+        speaker = self.speakers[self.current_speaker_index]
+        cursor = speaker.info_text.textCursor()
+        cursor.insertText("\n--- Nowa Sekcja ---\n")
+        speaker.info_text.setTextCursor(cursor)
+        speaker.info_text.setFocus()
+        self.current_section_index = 0
 
 
 if __name__ == "__main__":
