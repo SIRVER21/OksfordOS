@@ -17,7 +17,6 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QKeySequence
 
 
-# ZMIANA #1: Definicja AutoResizingTextEdit
 class AutoResizingTextEdit(QTextEdit):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -33,7 +32,7 @@ class AutoResizingTextEdit(QTextEdit):
             return
         doc_height = doc.size().height()
         h = max(40, min(int(doc_height) + 12, self.max_height))
-        self.setMinimumHeight(h)  # Można też ustawić maxHeight jeśli potrzebne
+        self.setMinimumHeight(h)
         self.updateGeometry()
 
 
@@ -52,20 +51,18 @@ class SpeakerSection(QWidget):
         header.setFont(header_font)
         layout.addWidget(header)
 
-        # ZMIANA #2: Zamiana klasy na AutoResizingTextEdit dla informacji
         self.info_text = AutoResizingTextEdit()
         self.info_text.setPlaceholderText(
             f"Informacje mówcy {self.speaker_num} {self.side}"
         )
         self.info_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.info_text.setMinimumHeight(100)
+        self.info_text.setMinimumHeight(40)
 
         layout.addWidget(self.info_text)
 
         questions_group = QGroupBox("Pytania")
         q_layout = QVBoxLayout()
 
-        # ZMIANA #3: Pytania jako AutoResizingTextEdit
         self.question1 = AutoResizingTextEdit()
         self.question1.setPlaceholderText("Pytanie 1")
         self.question1.setMinimumHeight(60)
@@ -79,6 +76,12 @@ class SpeakerSection(QWidget):
         self.question2.setSizePolicy(
             QSizePolicy.Expanding, QSizePolicy.MinimumExpanding
         )
+
+        self.question1.setVisible(False)
+        self.question2.setVisible(False)
+
+        self.question1.textChanged.connect(self.show_question1)
+        self.question2.textChanged.connect(self.show_question2)  # Check
 
         q_layout.addWidget(self.question1)
         q_layout.addWidget(self.question2)
@@ -94,14 +97,20 @@ class SpeakerSection(QWidget):
         self.info_text.setTextCursor(cursor)
         self.info_text.setFocus()
 
+    def show_question1(self):
+        if self.question1.toPlainText().strip():
+            self.question1.setVisible(True)
+
+    def show_question2(self):
+        if self.question2.toPlainText().strip():
+            self.question2.setVisible(True)
+
 
 class AdVocemSection(QWidget):
     def __init__(self, title):
         super().__init__()
         layout = QVBoxLayout()
-        self.text_edit = (
-            AutoResizingTextEdit()
-        )  # ZMIANA #4: tutaj również aby było spójnie
+        self.text_edit = AutoResizingTextEdit()
         self.text_edit.setPlaceholderText(title)
         self.text_edit.setMinimumHeight(120)
         self.text_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -125,7 +134,7 @@ class TimerPanel(QWidget):
         self.question_timer_label.setAlignment(Qt.AlignCenter)  # type: ignore
         self.question_timer_label.setFont(QFont("Arial", 18))
 
-        # layout.addStretch()
+        # layout.addStretch() # To nam daje że timer jest u góry, można zmienić!
         layout.addWidget(self.main_timer_label)
         layout.addWidget(self.question_timer_label)
         layout.addStretch()
@@ -173,8 +182,8 @@ class DebateJudgeApp(QMainWindow):
 
         # Ad vocem section: 2x2 grid beneath speakers
         self.ad_vocem_layout = QHBoxLayout()
-        self.ad_vocem_1 = AdVocemSection("Ad Vocem Propozycja 1")
-        self.ad_vocem_2 = AdVocemSection("Ad Vocem Opozycja 2")
+        self.ad_vocem_1 = AdVocemSection("Ad Vocem Propozycja")
+        self.ad_vocem_2 = AdVocemSection("Ad Vocem Opozycja")
         self.ad_vocem_layout.addWidget(self.ad_vocem_1)
         self.ad_vocem_layout.addWidget(self.ad_vocem_2)
 
@@ -195,20 +204,49 @@ class DebateJudgeApp(QMainWindow):
         self.setCentralWidget(main_widget)
 
     def setup_shortcuts(self):
+        # Ctrl+l/h - przejścia pomiędzy sekcjami mówcy
         QShortcut(QKeySequence("Ctrl+l"), self, self.next_section)
         QShortcut(QKeySequence("Ctrl+h"), self, self.previous_section)
         QShortcut(QKeySequence("Alt+l"), self, self.next_speaker)
         QShortcut(QKeySequence("Alt+h"), self, self.previous_speaker)
         QShortcut(QKeySequence("Ctrl+Return"), self, self.create_section)
 
+        # Ctrl+1-8 do przeskoku do mówcy
+        for i in range(8):
+            QShortcut(
+                QKeySequence(f"Ctrl+{i + 1}"),
+                self,
+                lambda idx=i: self.jump_to_speaker(idx),
+            )
+        # Alt+A – przejście do Ad Vocem PROPOZYCJA (lewe pole)
+        QShortcut(QKeySequence("Alt+a"), self, self.focus_ad_vocem_proposition)
+        # Alt+Shift+A – przejście do Ad Vocem OPOZYCJI (prawe pole)
+        QShortcut(QKeySequence("Alt+d"), self, self.focus_ad_vocem_opposition)
+
     def focus_current_section(self):
         speaker = self.speakers[self.current_speaker_index]
         if self.current_section_index == 0:
             speaker.info_text.setFocus()
+            self.ensure_widget_visible(speaker)
+
         elif self.current_section_index == 1:
+            speaker.question1.setVisible(True)
             speaker.question1.setFocus()
+            self.ensure_widget_visible(speaker)
+
         elif self.current_section_index == 2:
-            speaker.question2.setFocus()
+            if not speaker.question1.toPlainText().strip():
+                self.current_section_index = 1
+                speaker.question1.setFocus()
+                self.ensure_widget_visible(speaker)
+            else:
+                speaker.question2.setVisible(True)
+                speaker.question2.setFocus()
+                self.ensure_widget_visible(speaker)
+
+    def ensure_widget_visible(self, widget):
+        rect = widget.geometry()
+        self.scroll_area.ensureVisible(rect.x(), rect.y(), rect.width(), rect.height())
 
     def next_section(self):
         self.current_section_index = (self.current_section_index + 1) % 3
@@ -233,13 +271,40 @@ class DebateJudgeApp(QMainWindow):
         self.focus_current_section()
 
     def create_section(self):
-        # Insert new section marker in info_text of current speaker and focus it
         speaker = self.speakers[self.current_speaker_index]
-        cursor = speaker.info_text.textCursor()
+        fields = [speaker.info_text, speaker.question1, speaker.question2]
+        field = None
+
+        for f in fields:
+            if f.hasFocus():
+                field = f
+                break
+
+            if field is None:
+                field = speaker.info_text
+
+            if field == speaker.question1:
+                speaker.question1.setVisible(True)
+            if field == speaker.question2:
+                speaker.question2.setVisible(True)
+
+        cursor = field.textCursor()
         cursor.insertText("\n--- Nowa Sekcja ---\n")
-        speaker.info_text.setTextCursor(cursor)
-        speaker.info_text.setFocus()
+        field.setTextCursor(cursor)
+        field.setFocus()
+
+    def jump_to_speaker(self, idx):
         self.current_section_index = 0
+        self.focus_current_section()
+        self.ensure_widget_visible(self.speakers[idx])
+
+    def focus_ad_vocem_proposition(self):
+        self.ad_vocem_1.text_edit.setFocus()
+        self.ensure_widget_visible(self.ad_vocem_1)
+
+    def focus_ad_vocem_opposition(self):
+        self.ad_vocem_2.text_edit.setFocus()
+        self.ensure_widget_visible((self.ad_vocem_2))
 
 
 if __name__ == "__main__":
