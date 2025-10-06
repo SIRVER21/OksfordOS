@@ -88,7 +88,6 @@ class SpeakerSection(QWidget):
         questions_group.setLayout(q_layout)
 
         layout.addWidget(questions_group)
-
         self.setLayout(layout)
 
     def create_new_section(self):
@@ -272,28 +271,26 @@ class DebateJudgeApp(QMainWindow):
 
     def create_section(self):
         speaker = self.speakers[self.current_speaker_index]
-        fields = [speaker.info_text, speaker.question1, speaker.question2]
-        field = None
-
-        for f in fields:
-            if f.hasFocus():
-                field = f
-                break
-
-            if field is None:
-                field = speaker.info_text
-
-            if field == speaker.question1:
-                speaker.question1.setVisible(True)
-            if field == speaker.question2:
-                speaker.question2.setVisible(True)
-
-        cursor = field.textCursor()
-        cursor.insertText("\n--- Nowa Sekcja ---\n")
-        field.setTextCursor(cursor)
-        field.setFocus()
+        if self.current_section_index == 0:
+            cursor = speaker.info_text.textCursor()
+            cursor.insertText("\n--- Nowa Sekcja ---\n")
+            speaker.info_text.setTextCursor(cursor)
+            speaker.info_text.setFocus()
+        elif self.current_section_index == 1:
+            speaker.question1.setVisible(True)
+            cursor = speaker.question1.textCursor()
+            cursor.insertText("\n--- Nowa Sekcja ---\n")
+            speaker.question1.setTextCursor(cursor)
+            speaker.question1.setFocus()
+        elif self.current_section_index == 2:
+            speaker.question2.setVisible(True)
+            cursor = speaker.question2.textCursor()
+            cursor.insertText("\n--- Nowa Sekcja ---\n")
+            speaker.question2.setTextCursor(cursor)
+            speaker.question2.setFocus()
 
     def jump_to_speaker(self, idx):
+        self.current_speaker_index = idx
         self.current_section_index = 0
         self.focus_current_section()
         self.ensure_widget_visible(self.speakers[idx])
