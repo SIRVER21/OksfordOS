@@ -124,7 +124,7 @@ class TimerPanel(QWidget):
 
     def init_ui(self):
         layout = QVBoxLayout()
-        self.main_timer_label = QLabel("Mrożon")
+        self.main_timer_label = QLabel("5:00")
         self.main_timer_label.setAlignment(Qt.AlignCenter)  # type: ignore
         font = QFont("Arial", 36, QFont.Bold)
         self.main_timer_label.setFont(font)
