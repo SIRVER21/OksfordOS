@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QGridLayout,
     QShortcut,
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont, QKeySequence
 
 
@@ -146,12 +146,50 @@ class DebateJudgeApp(QMainWindow):
         self.setWindowTitle("OksfordOS")
         self.setGeometry(100, 100, 1300, 900)
 
-        self.current_speaker_index = 0
-        self.current_section_index = 0  # 0=info, 1=question1, 2=question2
+        # Timer
+        self.timer_running = False
+        self.timer_seconds_left = 300  # 5:00 timer
 
         self.init_ui()
         self.setup_shortcuts()
 
+        self.update_timer_label()
+
+        # Index
+        self.current_speaker_index = 0
+        self.current_section_index = 0  # 0=info, 1=question1, 2=question2
+
+        self.timer_qt = QTimer(self)
+        self.timer_qt.timeout.connect(self.update_timer)
+
+    def start_timer(self):
+        if not self.timer_running:
+            self.timer_qt.start(1000)  # Tick co sekunde
+            self.timer_running = True
+
+    def pause_timer(self):
+        if self.timer_running:
+            self.timer_qt.stop()
+            self.timer_running = False
+
+    def reset_timer(self, seconds=300):
+        self.pause_timer()
+        self.timer_seconds_left = seconds
+        self.update_timer_label()
+
+    def update_timer(self):
+        if self.timer_seconds_left > 0:
+            self.timer_seconds_left -= 1
+            self.update_timer_label()
+        else:
+            self.pause_timer()
+            # Jakieś dźwięki, wizualne efekty tutaj można dodać
+
+    def update_timer_label(self):
+        m, s = divmod(self.timer_seconds_left, 60)
+        self.timer_panel.main_timer_label.setText(f"{m:02}:{s:02}")
+
+    # GUI
     def init_ui(self):
         main_widget = QWidget()
         main_layout = QHBoxLayout()
@@ -222,6 +260,9 @@ class DebateJudgeApp(QMainWindow):
         # Alt+Shift+A – przejście do Ad Vocem OPOZYCJI (prawe pole)
         QShortcut(QKeySequence("Alt+d"), self, self.focus_ad_vocem_opposition)
 
+        QShortcut(QKeySequence("Ctrl+space"), self, self.toggle_timer)
+        QShortcut(QKeySequence("Ctrl+r"), self, lambda: self.reset_timer(300))
+
     def focus_current_section(self):
         speaker = self.speakers[self.current_speaker_index]
         if self.current_section_index == 0:
@@ -246,6 +287,12 @@ class DebateJudgeApp(QMainWindow):
     def ensure_widget_visible(self, widget):
         rect = widget.geometry()
         self.scroll_area.ensureVisible(rect.x(), rect.y(), rect.width(), rect.height())
+
+    def toggle_timer(self):
+        if self.timer_running:
+            self.pause_timer()
+        else:
+            self.start_timer()
 
     def next_section(self):
         self.current_section_index = (self.current_section_index + 1) % 3
