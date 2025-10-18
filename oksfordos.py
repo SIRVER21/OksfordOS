@@ -124,7 +124,7 @@ class TimerPanel(QWidget):
 
     def init_ui(self):
         layout = QVBoxLayout()
-        self.main_timer_label = QLabel("5:00")
+        self.main_timer_label = QLabel("4:00")
         self.main_timer_label.setAlignment(Qt.AlignCenter)  # type: ignore
         font = QFont("Arial", 36, QFont.Bold)
         self.main_timer_label.setFont(font)
@@ -148,7 +148,7 @@ class DebateJudgeApp(QMainWindow):
 
         # Timer
         self.timer_running = False
-        self.timer_seconds_left = 300  # 5:00 timer
+        self.timer_seconds_left = 240  # 4:00 timer
 
         self.init_ui()
         self.setup_shortcuts()
@@ -172,7 +172,7 @@ class DebateJudgeApp(QMainWindow):
             self.timer_qt.stop()
             self.timer_running = False
 
-    def reset_timer(self, seconds=300):
+    def reset_timer(self, seconds=240):
         self.pause_timer()
         self.timer_seconds_left = seconds
         self.update_timer_label()
@@ -261,7 +261,7 @@ class DebateJudgeApp(QMainWindow):
         QShortcut(QKeySequence("Alt+d"), self, self.focus_ad_vocem_opposition)
 
         QShortcut(QKeySequence("Ctrl+space"), self, self.toggle_timer)
-        QShortcut(QKeySequence("Ctrl+r"), self, lambda: self.reset_timer(300))
+        QShortcut(QKeySequence("Ctrl+r"), self, lambda: self.reset_timer(240))
 
     def focus_current_section(self):
         speaker = self.speakers[self.current_speaker_index]
