@@ -21,11 +21,26 @@ from PyQt5.QtGui import QFont, QKeySequence
 class AutoResizingTextEdit(QTextEdit):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        TypingFont = QFont("Arial", 11)  # czcionka pisana
+        self.setFont(TypingFont)
+
         self.textChanged.connect(self.resize_for_content)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)  # type: ignore
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
         self.setMinimumHeight(40)
         self.max_height = 600  # lub inna sensowna granica
+
+    def focusInEvent(self, event):  # type: ignore
+        super().focusInEvent(event)
+        self.setStyleSheet(
+            "border: 3px solid #1976d2; background: #f8faff; border-radius: 4px;"
+        )
+
+    def focusOutEvent(self, event):  # type: ignore
+        super().focusOutEvent(event)
+        self.setStyleSheet(
+            "border: 1px solid #cccccc; background: #ffffff; border-radius: 4px;"
+        )
 
     def resize_for_content(self):
         doc = self.document()
@@ -67,16 +82,12 @@ class SpeakerSection(QWidget):
         self.question1 = AutoResizingTextEdit()
         self.question1.setPlaceholderText("Pytanie 1")
         self.question1.setMinimumHeight(60)
-        self.question1.setSizePolicy(
-            QSizePolicy.Expanding, QSizePolicy.MinimumExpanding
-        )
+        self.question1.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
 
         self.question2 = AutoResizingTextEdit()
         self.question2.setPlaceholderText("Pytanie 2")
         self.question2.setMinimumHeight(60)
-        self.question2.setSizePolicy(
-            QSizePolicy.Expanding, QSizePolicy.MinimumExpanding
-        )
+        self.question2.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
 
         self.question1.setVisible(False)
         self.question2.setVisible(False)
@@ -125,10 +136,19 @@ class TimerPanel(QWidget):
 
     def init_ui(self):
         layout = QVBoxLayout()
+
+        # Main timer
         self.main_timer_label = QLabel("4:00")
         self.main_timer_label.setAlignment(Qt.AlignCenter)  # type: ignore
         font = QFont("Arial", 36, QFont.Bold)
         self.main_timer_label.setFont(font)
+
+        # Ad Vocem timer
+        self.ad_vocem_timer_label = QLabel("30")
+        self.ad_vocem_timer_label.setAlignment(Qt.AlignCenter)  # type: ignore
+        ad_font = QFont("Arial", 24, QFont.Bold)
+        self.ad_vocem_timer_label.setFont(ad_font)
+        self.ad_vocem_timer_label.setStyleSheet("color: #555;")  # opcjonalnie
 
         self.question_timer_label = QLabel("")
         self.question_timer_label.setAlignment(Qt.AlignCenter)  # type: ignore
@@ -136,6 +156,7 @@ class TimerPanel(QWidget):
 
         # layout.addStretch() # To nam daje że timer jest u góry, można zmienić!
         layout.addWidget(self.main_timer_label)
+        layout.addWidget(self.ad_vocem_timer_label)
         layout.addWidget(self.question_timer_label)
         layout.addStretch()
 
@@ -164,21 +185,30 @@ class DebateJudgeApp(QMainWindow):
         self.setWindowTitle("OksfordOS")
         self.setGeometry(100, 100, 1300, 900)
 
-        # Timer
+        # Main Timer
         self.timer_running = False
-        self.timer_seconds_left = 240  # 4:00 timer
+        self.timer_seconds_left = 240  # 4:00
 
-        self.init_ui()
-        self.setup_shortcuts()
-
-        self.update_timer_label()
+        # Ad vocem Timer
+        self.ad_timer_running = False
+        self.ad_timer_seconds_left = 30  # 30s
 
         # Index
         self.current_speaker_index = 0
         self.current_section_index = 0  # 0=info, 1=question1, 2=question2
 
+        # Qtimer
         self.timer_qt = QTimer(self)
         self.timer_qt.timeout.connect(self.update_timer)
+
+        self.ad_timer_qt = QTimer(self)
+        self.ad_timer_qt.timeout.connect(self.update_ad_timer)
+
+        self.init_ui()
+        self.setup_shortcuts()
+
+        self.update_timer_label()
+        self.update_ad_timer_label()
 
     def start_timer(self):
         if not self.timer_running:
@@ -206,6 +236,33 @@ class DebateJudgeApp(QMainWindow):
     def update_timer_label(self):
         m, s = divmod(self.timer_seconds_left, 60)
         self.timer_panel.main_timer_label.setText(f"{m:02}:{s:02}")
+
+    def start_ad_timer(self):
+        if not self.ad_timer_running:
+            self.ad_timer_qt.start(1000)  # Tick co sekunde
+            self.ad_timer_running = True
+
+    def pause_ad_timer(self):
+        if self.ad_timer_running:
+            self.ad_timer_qt.stop()
+            self.ad_timer_running = False
+
+    def reset_ad_timer(self, seconds=30):
+        self.pause_ad_timer()
+        self.ad_timer_seconds_left = seconds
+        self.update_ad_timer_label()
+
+    def update_ad_timer(self):
+        if self.ad_timer_seconds_left > 0:
+            self.ad_timer_seconds_left -= 1
+            self.update_ad_timer_label()
+        else:
+            self.pause_ad_timer()
+            # Jakieś dźwięki, wizualne efekty tutaj można dodać
+
+    def update_ad_timer_label(self):
+        m, s = divmod(self.ad_timer_seconds_left, 60)
+        self.timer_panel.ad_vocem_timer_label.setText(f"{m:02}:{s:02}")
 
     # GUI
     def init_ui(self):
@@ -277,9 +334,12 @@ class DebateJudgeApp(QMainWindow):
         QShortcut(QKeySequence("Alt+a"), self, self.focus_ad_vocem_proposition)
         # Alt+Shift+A – przejście do Ad Vocem OPOZYCJI (prawe pole)
         QShortcut(QKeySequence("Alt+d"), self, self.focus_ad_vocem_opposition)
-
+        # Ctrl+Space - start/stop Main Timer; Ctrl+R - reset Timer
         QShortcut(QKeySequence("Ctrl+space"), self, self.toggle_timer)
         QShortcut(QKeySequence("Ctrl+r"), self, lambda: self.reset_timer(240))
+        # Alt+Space - start/stop Ad-Vocem Timer; Alt+R - reset Ad-Vocem Timer
+        QShortcut(QKeySequence("Alt+space"), self, self.toggle_ad_timer)
+        QShortcut(QKeySequence("Alt+r"), self, lambda: self.reset_ad_timer(30))
 
     def focus_current_section(self):
         speaker = self.speakers[self.current_speaker_index]
@@ -311,6 +371,12 @@ class DebateJudgeApp(QMainWindow):
             self.pause_timer()
         else:
             self.start_timer()
+
+    def toggle_ad_timer(self):
+        if self.ad_timer_running:
+            self.pause_ad_timer()
+        else:
+            self.start_ad_timer()
 
     def next_section(self):
         self.current_section_index = (self.current_section_index + 1) % 3
