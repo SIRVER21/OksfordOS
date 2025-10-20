@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (
     QLabel,
     QGridLayout,
     QShortcut,
+    QFrame,
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont, QKeySequence
@@ -137,6 +138,23 @@ class TimerPanel(QWidget):
         layout.addWidget(self.main_timer_label)
         layout.addWidget(self.question_timer_label)
         layout.addStretch()
+
+        shortcuts_label = QLabel("""
+        <span style="color: #9a9a9a; font-size:14px;">
+        Ctrl+L/H – sekcja<br>
+        Alt+L/H – mówca<br>
+        Ctrl+⏎ – nowa sekcja<br>
+        Ctrl+␣ – timer<br>
+        Alt+␣ – ad vocem timer<br>
+        Ctrl+1-8 – mówca
+        </span>
+        """)
+
+        shortcuts_label.setAlignment(Qt.AlignLeft | Qt.AlignBottom)
+        shortcuts_label.setTextFormat(Qt.RichText)  # HTML
+        shortcuts_label.setWordWrap(True)
+        layout.addWidget(shortcuts_label)
+
         self.setLayout(layout)
 
 
@@ -202,7 +220,7 @@ class DebateJudgeApp(QMainWindow):
         right_container = QWidget()
         right_layout = QVBoxLayout()
 
-        # Speakers grid: 8 speakers in vertical order, each one row
+        # Speakers grid
         self.speaker_grid = QGridLayout()
         self.speakers = []
 
