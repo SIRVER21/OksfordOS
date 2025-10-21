@@ -93,7 +93,7 @@ class SpeakerSection(QWidget):
         self.question2.setVisible(False)
 
         self.question1.textChanged.connect(self.show_question1)
-        self.question2.textChanged.connect(self.show_question2)  # Check
+        self.question2.textChanged.connect(self.show_question2)
 
         q_layout.addWidget(self.question1)
         q_layout.addWidget(self.question2)
@@ -143,12 +143,12 @@ class TimerPanel(QWidget):
         font = QFont("Arial", 36, QFont.Bold)
         self.main_timer_label.setFont(font)
 
-        # Ad Vocem timer
+        # Ad Vocem/mini timer
         self.ad_vocem_timer_label = QLabel("30")
         self.ad_vocem_timer_label.setAlignment(Qt.AlignCenter)  # type: ignore
         ad_font = QFont("Arial", 24, QFont.Bold)
         self.ad_vocem_timer_label.setFont(ad_font)
-        self.ad_vocem_timer_label.setStyleSheet("color: #555;")  # opcjonalnie
+        self.ad_vocem_timer_label.setStyleSheet("color: #555;")
 
         self.question_timer_label = QLabel("")
         self.question_timer_label.setAlignment(Qt.AlignCenter)  # type: ignore
@@ -167,7 +167,9 @@ class TimerPanel(QWidget):
         Ctrl+⏎ – nowa sekcja<br>
         Ctrl+␣ – timer<br>
         Alt+␣ – ad vocem timer<br>
-        Ctrl+1-8 – mówca
+        Ctrl+1-8 – mówca<br>
+        Ctrl+R - reset timer<br>
+        Alt+R - reset mini timer<br>
         </span>
         """)
 
@@ -269,19 +271,18 @@ class DebateJudgeApp(QMainWindow):
         main_widget = QWidget()
         main_layout = QHBoxLayout()
 
-        # Timer panel on the Left
+        # Timer panel po lewej
         self.timer_panel = TimerPanel()
         self.timer_panel.setFixedWidth(180)
 
-        # Right Panel for speakers and ad vocem
+        # Prawy Panel na mówców
         right_container = QWidget()
         right_layout = QVBoxLayout()
 
-        # Speakers grid
+        # Grid mówców
         self.speaker_grid = QGridLayout()
         self.speakers = []
 
-        # Grid mówców
         for i in range(4):
             prop = SpeakerSection(i + 1, "Propozycja")
             opp = SpeakerSection(i + 1, "Opozycja")
@@ -292,7 +293,7 @@ class DebateJudgeApp(QMainWindow):
 
         right_layout.addLayout(self.speaker_grid)
 
-        # Ad vocem section: 2x2 grid beneath speakers
+        # Ad vocem: 2x2 grid
         self.ad_vocem_layout = QHBoxLayout()
         self.ad_vocem_1 = AdVocemSection("Ad Vocem Propozycja")
         self.ad_vocem_2 = AdVocemSection("Ad Vocem Opozycja")
