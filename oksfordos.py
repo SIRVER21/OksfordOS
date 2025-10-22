@@ -173,8 +173,8 @@ class TimerPanel(QWidget):
         </span>
         """)
 
-        shortcuts_label.setAlignment(Qt.AlignLeft | Qt.AlignBottom)
-        shortcuts_label.setTextFormat(Qt.RichText)  # HTML
+        shortcuts_label.setAlignment(Qt.AlignLeft | Qt.AlignBottom)  # type: ignore
+        shortcuts_label.setTextFormat(Qt.RichText)  # type: ignore # HTML
         shortcuts_label.setWordWrap(True)
         layout.addWidget(shortcuts_label)
 
