@@ -1,9 +1,13 @@
 import sys
 from PyQt5.QtWidgets import (
     QApplication,
+    QComboBox,
+    QDialog,
     QGroupBox,
+    QPushButton,
     QScrollArea,
     QSizePolicy,
+    QSpinBox,
     QTextEdit,
     QWidget,
     QMainWindow,
@@ -12,10 +16,15 @@ from PyQt5.QtWidgets import (
     QLabel,
     QGridLayout,
     QShortcut,
-    QFrame,
 )
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, QSettings
 from PyQt5.QtGui import QFont, QKeySequence
+
+
+def apply_theme(app, theme="Jasny"):
+    file = "light.qss" if theme == "Jasny" else "dark.qss"
+    with open(file, "r") as f:
+        app.setStyleSheet(f.read())
 
 
 class AutoResizingTextEdit(QTextEdit):
@@ -23,24 +32,11 @@ class AutoResizingTextEdit(QTextEdit):
         super().__init__(*args, **kwargs)
         TypingFont = QFont("Arial", 11)  # czcionka pisana
         self.setFont(TypingFont)
-
         self.textChanged.connect(self.resize_for_content)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)  # type: ignore
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
         self.setMinimumHeight(40)
         self.max_height = 600  # lub inna sensowna granica
-
-    def focusInEvent(self, event):  # type: ignore
-        super().focusInEvent(event)
-        self.setStyleSheet(
-            "border: 3px solid #1976d2; background: #f8faff; border-radius: 4px;"
-        )
-
-    def focusOutEvent(self, event):  # type: ignore
-        super().focusOutEvent(event)
-        self.setStyleSheet(
-            "border: 1px solid #cccccc; background: #ffffff; border-radius: 4px;"
-        )
 
     def resize_for_content(self):
         doc = self.document()
@@ -50,6 +46,82 @@ class AutoResizingTextEdit(QTextEdit):
         h = max(40, min(int(doc_height) + 12, self.max_height))
         self.setMinimumHeight(h)
         self.updateGeometry()
+
+
+# Sekcja Ustawień
+class SettingsDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setModal(True)
+        self.setWindowTitle("Ustawienia")
+        self.setFixedSize(400, 400)
+
+        layout = QVBoxLayout()
+
+        # Main Timer
+        main_timer_group = QGroupBox("Czas głównego timera")
+        main_timer_layout = QHBoxLayout()
+        self.main_timer_minutes = QSpinBox()
+        self.main_timer_minutes.setRange(0, 99)
+        self.main_timer_seconds = QSpinBox()
+        self.main_timer_seconds.setRange(0, 59)
+        main_timer_layout.addWidget(QLabel("Min:"))
+        main_timer_layout.addWidget(self.main_timer_minutes)
+        main_timer_layout.addWidget(QLabel("Sek:"))
+        main_timer_layout.addWidget(self.main_timer_seconds)
+        main_timer_group.setLayout(main_timer_layout)
+        layout.addWidget(main_timer_group)
+
+        # Ad Vocem Timer
+        ad_timer_group = QGroupBox("Czas mini timera")
+        ad_timer_layout = QHBoxLayout()
+        self.ad_timer_seconds = QSpinBox()
+        self.ad_timer_seconds.setRange(1, 300)  # 5 min
+        ad_timer_layout.addWidget(QLabel("Sekundy:"))
+        ad_timer_layout.addWidget(self.ad_timer_seconds)
+        ad_timer_group.setLayout(ad_timer_layout)
+        layout.addWidget(ad_timer_group)
+
+        # Theme select
+        theme_group = QGroupBox("Motyw")
+        theme_layout = QHBoxLayout()
+        self.theme_combo = QComboBox()
+        self.theme_combo.addItems(["Jasny", "Ciemny"])
+        theme_layout.addWidget(QLabel("Motyw:"))
+        theme_layout.addWidget(self.theme_combo)
+        theme_group.setLayout(theme_layout)
+        layout.addWidget(theme_group)
+
+        self.settings = QSettings("OksfordOS", "DebateJudgeApp")
+        current_theme = self.settings.value("theme", "Jasny")
+        self.theme_combo.setCurrentText(current_theme)
+
+        # Load defaults
+        self.settings = QSettings("OksfordOS", "DebateJudgeApp")
+        m = int(self.settings.value("main_minutes", 4))
+        s = int(self.settings.value("main_seconds", 0))
+        ads = int(self.settings.value("ad_seconds", 30))
+        self.main_timer_minutes.setValue(m)
+        self.main_timer_seconds.setValue(s)
+        self.ad_timer_seconds.setValue(ads)
+
+        # Save button
+        save_btn = QPushButton("Zapisz i zamknij")
+        save_btn.clicked.connect(self.save_settings)
+        layout.addWidget(save_btn)
+
+        self.setLayout(layout)
+
+    def save_settings(self):
+        theme = self.theme_combo.currentText()
+        self.settings.setValue("theme", theme)
+        m = self.main_timer_minutes.value()
+        s = self.main_timer_seconds.value()
+        ads = self.ad_timer_seconds.value()
+        self.settings.setValue("main_minutes", m)
+        self.settings.setValue("main_seconds", s)
+        self.settings.setValue("ad_seconds", ads)
+        self.accept()  # zamyka dialog
 
 
 class SpeakerSection(QWidget):
@@ -162,14 +234,15 @@ class TimerPanel(QWidget):
 
         shortcuts_label = QLabel("""
         <span style="color: #9a9a9a; font-size:14px;">
-        Ctrl+L/H – sekcja<br>
-        Alt+L/H – mówca<br>
-        Ctrl+⏎ – nowa sekcja<br>
-        Ctrl+␣ – timer<br>
-        Alt+␣ – ad vocem timer<br>
-        Ctrl+1-8 – mówca<br>
-        Ctrl+R - reset timer<br>
-        Alt+R - reset mini timer<br>
+        Ctrl+L/H – Sekcja<br>
+        Alt+L/H – Mówca<br>
+        Ctrl+⏎ – Nowa sekcja<br>
+        Ctrl+␣ – Timer<br>
+        Alt+␣ – Ad vocem timer<br>
+        Ctrl+1-8 – Mówca<br>
+        Ctrl+R - Reset timer<br>
+        Alt+R - Reset mini timer<br>
+        Ctrl+. - Ustawienia<br>
         </span>
         """)
 
@@ -209,8 +282,25 @@ class DebateJudgeApp(QMainWindow):
         self.init_ui()
         self.setup_shortcuts()
 
+        self.reset_timer()
+        self.reset_ad_timer()
         self.update_timer_label()
         self.update_ad_timer_label()
+
+    def open_settings(self):
+        dlg = SettingsDialog(self)
+        if dlg.exec_():
+            self.reload_theme()
+
+    def reload_theme(self):
+        settings = QSettings("OksfordOS", "DebateJudgeApp")
+        theme = settings.value("theme", "Jasny")
+        apply_theme(QApplication.instance(), theme)
+        # Reload timer defaults
+        self.reset_timer()
+        self.reset_ad_timer()
+
+        # Timer
 
     def start_timer(self):
         if not self.timer_running:
@@ -222,9 +312,15 @@ class DebateJudgeApp(QMainWindow):
             self.timer_qt.stop()
             self.timer_running = False
 
-    def reset_timer(self, seconds=240):
+    def reset_timer(self, seconds=None):
+        if seconds is not None:
+            self.timer_seconds_left = seconds
+        else:
+            settings = QSettings("OksfordOS", "DebateJudgeApp")
+            m = int(settings.value("main_minutes", 4))
+            s = int(settings.value("main_seconds", 0))
+            self.timer_seconds_left = m * 60 + s
         self.pause_timer()
-        self.timer_seconds_left = seconds
         self.update_timer_label()
 
     def update_timer(self):
@@ -249,9 +345,13 @@ class DebateJudgeApp(QMainWindow):
             self.ad_timer_qt.stop()
             self.ad_timer_running = False
 
-    def reset_ad_timer(self, seconds=30):
+    def reset_ad_timer(self, seconds=None):
+        if seconds is not None:
+            self.ad_timer_seconds_left = seconds
+        else:
+            settings = QSettings("OksfordOS", "DebateJudgeApp")
+            self.ad_timer_seconds_left = int(settings.value("ad_seconds", 30))
         self.pause_ad_timer()
-        self.ad_timer_seconds_left = seconds
         self.update_ad_timer_label()
 
     def update_ad_timer(self):
@@ -337,10 +437,13 @@ class DebateJudgeApp(QMainWindow):
         QShortcut(QKeySequence("Alt+d"), self, self.focus_ad_vocem_opposition)
         # Ctrl+Space - start/stop Main Timer; Ctrl+R - reset Timer
         QShortcut(QKeySequence("Ctrl+space"), self, self.toggle_timer)
-        QShortcut(QKeySequence("Ctrl+r"), self, lambda: self.reset_timer(240))
+        QShortcut(QKeySequence("Ctrl+r"), self, lambda: self.reset_timer())
         # Alt+Space - start/stop Ad-Vocem Timer; Alt+R - reset Ad-Vocem Timer
         QShortcut(QKeySequence("Alt+space"), self, self.toggle_ad_timer)
-        QShortcut(QKeySequence("Alt+r"), self, lambda: self.reset_ad_timer(30))
+        QShortcut(QKeySequence("Alt+r"), self, lambda: self.reset_ad_timer())
+
+        # Ustawienia
+        QShortcut(QKeySequence("Ctrl+."), self, self.open_settings)
 
     def focus_current_section(self):
         speaker = self.speakers[self.current_speaker_index]
@@ -405,19 +508,19 @@ class DebateJudgeApp(QMainWindow):
         speaker = self.speakers[self.current_speaker_index]
         if self.current_section_index == 0:
             cursor = speaker.info_text.textCursor()
-            cursor.insertText("\n--- Nowa Sekcja ---\n")
+            cursor.insertText("\n------------------\n")
             speaker.info_text.setTextCursor(cursor)
             speaker.info_text.setFocus()
         elif self.current_section_index == 1:
             speaker.question1.setVisible(True)
             cursor = speaker.question1.textCursor()
-            cursor.insertText("\n--- Nowa Sekcja ---\n")
+            cursor.insertText("\n--- Odpowiedź ---\n")
             speaker.question1.setTextCursor(cursor)
             speaker.question1.setFocus()
         elif self.current_section_index == 2:
             speaker.question2.setVisible(True)
             cursor = speaker.question2.textCursor()
-            cursor.insertText("\n--- Nowa Sekcja ---\n")
+            cursor.insertText("\n--- Odpowiedź ---\n")
             speaker.question2.setTextCursor(cursor)
             speaker.question2.setFocus()
 
@@ -438,6 +541,10 @@ class DebateJudgeApp(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    settings = QSettings("OksfordOS", "DebateJudgeApp")
+    theme = settings.value("theme", "Jasny")
+    apply_theme(app, theme)
+
     window = DebateJudgeApp()
     window.show()
     sys.exit(app.exec_())

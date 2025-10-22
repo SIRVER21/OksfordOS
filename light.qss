@@ -1,0 +1,39 @@
+QWidget { 
+    background: #f7f7fb; 
+    color: #222; 
+}
+QLabel { color: #222; }
+QGroupBox { 
+    border: 1px solid #ccc; 
+    margin-top: 10px;
+    padding-top: 10px;
+}
+QTextEdit, QPlainTextEdit, QLineEdit {
+    background: #ffffff;
+    color: #222;
+    border: 1px solid #b0b0b0;
+    border-radius: 4px;
+}
+QTextEdit:focus, QPlainTextEdit:focus, QLineEdit:focus {
+    background: #f9faff;
+    color: #222;
+    border: 2px solid #5b8cff;
+}
+QDialog, QComboBox, QListView, QAbstractItemView {
+    background: #f7f7fb;
+    color: #222;
+}
+QComboBox QAbstractItemView { 
+    background: #fbfbfb; 
+    color: #222; 
+}
+QPushButton {
+    background-color: #f0f0f8;
+    color: #222;
+    border: 1px solid #b0b0b0;
+    padding: 7px 14px;
+    border-radius: 4px;
+}
+QPushButton:hover { background: #e0e0fa; }
+QPushButton:pressed { background: #d0d0ea; }
+
