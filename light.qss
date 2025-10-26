@@ -37,3 +37,30 @@ QPushButton {
 QPushButton:hover { background: #e0e0fa; }
 QPushButton:pressed { background: #d0d0ea; }
 
+QGroupBox#scores_group {
+    background: @scores_bg;
+    border: 1.5px solid @scores_border;
+    border-radius: 12px;
+    margin-top: 18px;
+}
+QTableWidget { background: @table_bg; border: none; font-size: 17px; }
+QHeaderView::section {
+    background-color: @header_bg;
+    color: @header_color;
+    font-weight: bold;
+    border: none;
+    border-bottom: 1.5px solid @header_border;
+}
+QSpinBox {
+    background: @spin_bg;
+    color: @spin_color;
+    border-radius: 7px;
+    border: 1.5px solid @spin_border;
+    padding: 4px 15px;
+    font-size: 18px;
+    min-width: 45px;
+}
+QSpinBox::up-button, QSpinBox::down-button {
+    width: 15px;
+    height: 14px;
+}

@@ -1,3 +1,4 @@
+
 QWidget { 
     background: #27293C; 
     color: #e0e0e0; 
@@ -36,3 +37,38 @@ QPushButton {
 }
 QPushButton:hover { background: #3c3c5c; }
 QPushButton:pressed { background: #292942; }
+QGroupBox:title { color: #aaa; }
+
+/* SCORING TABLE AND SPINBOXES */
+QGroupBox#scores_group {
+    background: #232334;
+    border: 1.5px solid #47475A;
+    border-radius: 12px;
+    margin-top: 18px;
+}
+QTableWidget { 
+    background: #31324b; 
+    border: none; 
+    font-size: 17px; 
+}
+QHeaderView::section {
+    background-color: #232344;
+    color: #b3bbff;
+    font-weight: bold;
+    border: none;
+    border-bottom: 1.5px solid #4c4b68;
+}
+QSpinBox {
+    background: #343355;
+    color: #b2bcff;
+    border-radius: 7px;
+    border: 1.5px solid #47475A;
+    padding: 4px 15px;
+    font-size: 18px;
+    min-width: 45px;
+}
+QSpinBox::up-button, QSpinBox::down-button {
+    width: 15px;
+    height: 14px;
+}
+

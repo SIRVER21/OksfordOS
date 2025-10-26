@@ -16,6 +16,8 @@ from PyQt5.QtWidgets import (
     QLabel,
     QGridLayout,
     QShortcut,
+    QTableWidget,
+    QTableWidgetItem,
 )
 from PyQt5.QtCore import Qt, QTimer, QSettings
 from PyQt5.QtGui import QFont, QKeySequence
@@ -193,12 +195,6 @@ class SpeakerSection(QWidget):
         layout.addWidget(questions_group)
         self.setLayout(layout)
 
-    def create_new_section(self):
-        cursor = self.info_text.textCursor()
-        cursor.insertText("\n--- Nowa Sekcja ---\n")
-        self.info_text.setTextCursor(cursor)
-        self.info_text.setFocus()
-
     def show_question1(self):
         if self.question1.toPlainText().strip():
             self.question1.setVisible(True)
@@ -262,6 +258,8 @@ class TimerPanel(QWidget):
         Ctrl+N - Notatnik<br>
         Ctrl+R - Reset timer<br>
         Alt+R - Reset mini timer<br>
+        Alt+O - Strona w górę<br>
+        Alt+P - Strona w dół<br>
         Ctrl+. - Ustawienia<br>
         </span>
         """)
@@ -428,6 +426,33 @@ class DebateJudgeApp(QMainWindow):
         self.notatnik_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         right_layout.addWidget(self.notatnik_box)
 
+        # Punktacja
+        self.scores_group = QGroupBox("Punktacja")
+        scores_layout = QVBoxLayout()
+
+        speakers_names = [f"Mówca {i + 1}" for i in range(8)]
+        self.scores_table = QTableWidget(1, 8)
+        self.scores_table.setHorizontalHeaderLabels(speakers_names)
+        self.scores_table.verticalHeader().setVisible(False)  # type: ignore
+        self.scores_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.scores_table.setFixedHeight(80)  # 80-120px
+
+        for i in range(8):
+            spin = QSpinBox()
+            spin.setRange(0, 10)
+            spin.setStyleSheet("QSpinBox {font-size: 18px; min-width: 50px;}")
+            self.scores_table.setCellWidget(0, i, spin)
+            spin.valueChanged.connect(self.update_team_scores)
+
+        scores_layout.addWidget(self.scores_table)
+        self.scores_group.setLayout(scores_layout)
+        right_layout.addWidget(self.scores_group)
+
+        self.team1_label = QLabel("Suma - Propozycja: 0")
+        self.team2_label = QLabel("Suma - Opozycja: 0")
+        scores_layout.addWidget(self.team1_label)
+        scores_layout.addWidget(self.team2_label)
+
         right_container.setLayout(right_layout)
 
         # Right side scrollable
@@ -471,6 +496,22 @@ class DebateJudgeApp(QMainWindow):
 
         # Ustawienia
         QShortcut(QKeySequence("Ctrl+."), self, self.open_settings)
+
+        # Przewijanie
+        QShortcut(
+            QKeySequence("Alt+o"),
+            self,
+            lambda: self.scroll_area.verticalScrollBar().triggerAction(  # type: ignore
+                self.scroll_area.verticalScrollBar().SliderPageStepSub  # type: ignore
+            ),
+        )
+        QShortcut(
+            QKeySequence("Alt+p"),
+            self,
+            lambda: self.scroll_area.verticalScrollBar().triggerAction(  # type: ignore
+                self.scroll_area.verticalScrollBar().SliderPageStepAdd  # type: ignore
+            ),
+        )
 
     def focus_current_section(self):
         speaker = self.speakers[self.current_speaker_index]
@@ -568,6 +609,18 @@ class DebateJudgeApp(QMainWindow):
     def focus_notatnik(self):
         self.notatnik_box.setFocus()
         self.ensure_widget_visible(self.notatnik_box)
+
+    def update_team_scores(self):
+        prop_sum = sum(
+            self.scores_table.cellWidget(0, i).value()
+            for i in range(0, 8, 2)  # type: ignore
+        )
+        opp_sum = sum(
+            self.scores_table.cellWidget(0, i).value()
+            for i in range(1, 8, 2)  # type: ignore
+        )
+        self.team1_label.setText(f"Suma - Propozycja: {prop_sum}")
+        self.team2_label.setText(f"Suma - Opozycja: {opp_sum}")
 
 
 if __name__ == "__main__":
