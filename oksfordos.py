@@ -22,7 +22,16 @@ from PyQt5.QtGui import QFont, QKeySequence
 
 
 def apply_theme(app, theme="Jasny"):
-    file = "light.qss" if theme == "Jasny" else "dark.qss"
+    theme_files = {
+        "Jasny": "light.qss",
+        "Ciemny": "dark.qss",
+        "Różowy": "pink.qss",
+        "Miętowy": "mietowy.qss",
+        "Baby blue": "baby-blue.qss",
+        "Jasny zielony": "light-green.qss",
+        "Lawendowy": "lawendowy.qss",
+    }
+    file = theme_files.get(theme, "light.qss")
     with open(file, "r") as f:
         app.setStyleSheet(f.read())
 
@@ -86,7 +95,17 @@ class SettingsDialog(QDialog):
         theme_group = QGroupBox("Motyw")
         theme_layout = QHBoxLayout()
         self.theme_combo = QComboBox()
-        self.theme_combo.addItems(["Jasny", "Ciemny"])
+        self.theme_combo.addItems(
+            [
+                "Jasny",
+                "Ciemny",
+                "Różowy",
+                "Miętowy",
+                "Baby blue",
+                "Jasny zielony",
+                "Lawendowy",
+            ]
+        )
         theme_layout.addWidget(QLabel("Motyw:"))
         theme_layout.addWidget(self.theme_combo)
         theme_group.setLayout(theme_layout)
@@ -240,6 +259,7 @@ class TimerPanel(QWidget):
         Ctrl+␣ – Timer<br>
         Alt+␣ – Ad vocem timer<br>
         Ctrl+1-8 – Mówca<br>
+        Ctrl+N - Notatnik<br>
         Ctrl+R - Reset timer<br>
         Alt+R - Reset mini timer<br>
         Ctrl+. - Ustawienia<br>
@@ -399,8 +419,14 @@ class DebateJudgeApp(QMainWindow):
         self.ad_vocem_2 = AdVocemSection("Ad Vocem Opozycja")
         self.ad_vocem_layout.addWidget(self.ad_vocem_1)
         self.ad_vocem_layout.addWidget(self.ad_vocem_2)
-
         right_layout.addLayout(self.ad_vocem_layout)
+
+        # Notatnik
+        self.notatnik_box = AutoResizingTextEdit()
+        self.notatnik_box.setPlaceholderText("Notatnik")
+        self.notatnik_box.setMinimumHeight(120)
+        self.notatnik_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        right_layout.addWidget(self.notatnik_box)
 
         right_container.setLayout(right_layout)
 
@@ -422,6 +448,7 @@ class DebateJudgeApp(QMainWindow):
         QShortcut(QKeySequence("Ctrl+h"), self, self.previous_section)
         QShortcut(QKeySequence("Alt+l"), self, self.next_speaker)
         QShortcut(QKeySequence("Alt+h"), self, self.previous_speaker)
+        QShortcut(QKeySequence("Ctrl+n"), self, self.focus_notatnik)
         QShortcut(QKeySequence("Ctrl+Return"), self, self.create_section)
 
         # Ctrl+1-8 do przeskoku do mówcy
@@ -537,6 +564,10 @@ class DebateJudgeApp(QMainWindow):
     def focus_ad_vocem_opposition(self):
         self.ad_vocem_2.text_edit.setFocus()
         self.ensure_widget_visible((self.ad_vocem_2))
+
+    def focus_notatnik(self):
+        self.notatnik_box.setFocus()
+        self.ensure_widget_visible(self.notatnik_box)
 
 
 if __name__ == "__main__":

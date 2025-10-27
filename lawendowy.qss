@@ -1,0 +1,31 @@
+/* Pastel Lavender Theme */
+QWidget { background: #e7e0fc; color: #4c3a8c; }
+QLabel { color: #4c3a8c; }
+QGroupBox { border: 1px solid #c1b1f8; margin-top: 10px; padding-top: 10px; }
+QTextEdit, QPlainTextEdit, QLineEdit {
+    background: #f0ebfd;
+    color: #4c3a8c;
+    border: 1.5px solid #c1b1f8;
+    border-radius: 5px;
+    selection-background-color: #b4abd9;
+}
+QTextEdit:focus, QPlainTextEdit:focus, QLineEdit:focus {
+    background: #dfd9fb;
+    color: #382f7e;
+    border: 2px solid #8c81d6;
+}
+QDialog, QComboBox, QListView, QAbstractItemView {
+    background: #e7e0fc;
+    color: #4c3a8c;
+}
+QComboBox QAbstractItemView { background: #f0ebfd; color: #4c3a8c; }
+QPushButton {
+    background-color: #cbbae9;
+    color: #362c74;
+    border: 1px solid #c1b1f8;
+    padding: 7px 14px;
+    border-radius: 7px;
+}
+QPushButton:hover { background: #b8a3e5; }
+QPushButton:pressed { background: #a593dd; }
+QGroupBox:title { color: #8e82d2; }

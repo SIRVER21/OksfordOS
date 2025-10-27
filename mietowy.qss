@@ -1,0 +1,31 @@
+/* Pastel Mint Theme */
+QWidget { background: #d6f0e4; color: #2c5d46; }
+QLabel { color: #2c5d46; }
+QGroupBox { border: 1px solid #9cd5bf; margin-top: 10px; padding-top: 10px; }
+QTextEdit, QPlainTextEdit, QLineEdit {
+    background: #ebfbf4;
+    color: #2c5d46;
+    border: 1.5px solid #9cd5bf;
+    border-radius: 5px;
+    selection-background-color: #a7dac3;
+}
+QTextEdit:focus, QPlainTextEdit:focus, QLineEdit:focus {
+    background: #c9f8d9;
+    color: #3a6a52;
+    border: 2px solid #67be97;
+}
+QDialog, QComboBox, QListView, QAbstractItemView {
+    background: #d6f0e4;
+    color: #2c5d46;
+}
+QComboBox QAbstractItemView { background: #ebfbf4; color: #2c5d46; }
+QPushButton {
+    background-color: #a7dcca;
+    color: #2c5d46;
+    border: 1px solid #9cd5bf;
+    padding: 7px 14px;
+    border-radius: 7px;
+}
+QPushButton:hover { background: #97cdb5; }
+QPushButton:pressed { background: #80baa6; }
+QGroupBox:title { color: #7ea682; }
