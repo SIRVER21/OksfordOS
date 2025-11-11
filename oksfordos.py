@@ -18,9 +18,10 @@ from PyQt5.QtWidgets import (
     QShortcut,
     QTableWidget,
     QTableWidgetItem,
+    QHeaderView,
 )
 from PyQt5.QtCore import Qt, QTimer, QSettings
-from PyQt5.QtGui import QFont, QKeySequence
+from PyQt5.QtGui import QFont, QKeySequence, QFontMetrics
 
 
 def apply_theme(app, theme="Jasny"):
@@ -48,6 +49,9 @@ class AutoResizingTextEdit(QTextEdit):
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
         self.setMinimumHeight(40)
         self.max_height = 600  # lub inna sensowna granica
+
+        fontmetrics = QFontMetrics(self.font())
+        self.setTabStopDistance(fontmetrics.width(" ") * 5)  # Tab = 4 spacje
 
     def resize_for_content(self):
         doc = self.document()
@@ -428,14 +432,22 @@ class DebateJudgeApp(QMainWindow):
 
         # Punktacja
         self.scores_group = QGroupBox("Punktacja")
+        self.scores_group.setObjectName("scores_group")
         scores_layout = QVBoxLayout()
 
         speakers_names = [f"Mówca {i + 1}" for i in range(8)]
         self.scores_table = QTableWidget(1, 8)
         self.scores_table.setHorizontalHeaderLabels(speakers_names)
         self.scores_table.verticalHeader().setVisible(False)  # type: ignore
-        self.scores_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.scores_table.setFixedHeight(80)  # 80-120px
+        header = self.scores_table.horizontalHeader()
+        for i in range(self.scores_table.columnCount()):
+            header.setSectionResizeMode(i, QHeaderView.Stretch)  # type: ignore
+        header.setSectionsMovable(False)  # type: ignore
+        header.setSectionsClickable(False)  # type: ignore
+        header.setStretchLastSection(True)  # type: ignore
+
+        self.scores_table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)  # type: ignore
+        self.scores_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)  # type: ignore
 
         for i in range(8):
             spin = QSpinBox()
@@ -448,10 +460,26 @@ class DebateJudgeApp(QMainWindow):
         self.scores_group.setLayout(scores_layout)
         right_layout.addWidget(self.scores_group)
 
+        sums_row = QWidget()
+        sums_layout = QHBoxLayout()
+        sums_layout.setContentsMargins(18, 7, 18, 7)
         self.team1_label = QLabel("Suma - Propozycja: 0")
         self.team2_label = QLabel("Suma - Opozycja: 0")
-        scores_layout.addWidget(self.team1_label)
-        scores_layout.addWidget(self.team2_label)
+        self.team1_label.setStyleSheet(
+            "background:rgba(255,255,255,0.10);color:#5e3a99;"
+            "font-size:19px;font-weight:700;border-radius:8px;padding:9px 24px;"
+        )
+        self.team2_label.setStyleSheet(
+            "background:rgba(255,255,255,0.10);color:#3a4599;"
+            "font-size:19px;font-weight:700;border-radius:8px;padding:9px 24px;"
+        )
+        sums_layout.addStretch(1)
+        sums_layout.addWidget(self.team1_label)
+        sums_layout.addSpacing(18)
+        sums_layout.addWidget(self.team2_label)
+        sums_layout.addStretch(1)
+        sums_row.setLayout(sums_layout)
+        scores_layout.addWidget(sums_row)
 
         right_container.setLayout(right_layout)
 
@@ -573,24 +601,35 @@ class DebateJudgeApp(QMainWindow):
         self.focus_current_section()
 
     def create_section(self):
-        speaker = self.speakers[self.current_speaker_index]
-        if self.current_section_index == 0:
-            cursor = speaker.info_text.textCursor()
+        focus_wid = QApplication.focusWidget()
+        # Speaker fields
+        for sp in self.speakers:
+            if focus_wid in [sp.info_text, sp.question1, sp.question2]:
+                cursor = focus_wid.textCursor()
+                cursor.insertText("\n------------------\n")
+                focus_wid.setTextCursor(cursor)
+                focus_wid.setFocus()
+                return
+        # Ad vocem
+        if hasattr(self, "ad_vocem_1") and focus_wid == self.ad_vocem_1.text_edit:
+            cursor = self.ad_vocem_1.text_edit.textCursor()
             cursor.insertText("\n------------------\n")
-            speaker.info_text.setTextCursor(cursor)
-            speaker.info_text.setFocus()
-        elif self.current_section_index == 1:
-            speaker.question1.setVisible(True)
-            cursor = speaker.question1.textCursor()
-            cursor.insertText("\n--- Odpowiedź ---\n")
-            speaker.question1.setTextCursor(cursor)
-            speaker.question1.setFocus()
-        elif self.current_section_index == 2:
-            speaker.question2.setVisible(True)
-            cursor = speaker.question2.textCursor()
-            cursor.insertText("\n--- Odpowiedź ---\n")
-            speaker.question2.setTextCursor(cursor)
-            speaker.question2.setFocus()
+            self.ad_vocem_1.text_edit.setTextCursor(cursor)
+            self.ad_vocem_1.text_edit.setFocus()
+            return
+        if hasattr(self, "ad_vocem_2") and focus_wid == self.ad_vocem_2.text_edit:
+            cursor = self.ad_vocem_2.text_edit.textCursor()
+            cursor.insertText("\n------------------\n")
+            self.ad_vocem_2.text_edit.setTextCursor(cursor)
+            self.ad_vocem_2.text_edit.setFocus()
+            return
+        # Notatnik
+        if hasattr(self, "notatnik_box") and focus_wid == self.notatnik_box:
+            cursor = self.notatnik_box.textCursor()
+            cursor.insertText("\n------------------\n")
+            self.notatnik_box.setTextCursor(cursor)
+            self.notatnik_box.setFocus()
+            return
 
     def jump_to_speaker(self, idx):
         self.current_speaker_index = idx
@@ -612,12 +651,12 @@ class DebateJudgeApp(QMainWindow):
 
     def update_team_scores(self):
         prop_sum = sum(
-            self.scores_table.cellWidget(0, i).value()
-            for i in range(0, 8, 2)  # type: ignore
+            self.scores_table.cellWidget(0, i).value()  # type: ignore
+            for i in range(0, 8, 2)
         )
         opp_sum = sum(
-            self.scores_table.cellWidget(0, i).value()
-            for i in range(1, 8, 2)  # type: ignore
+            self.scores_table.cellWidget(0, i).value()  # type: ignore
+            for i in range(1, 8, 2)
         )
         self.team1_label.setText(f"Suma - Propozycja: {prop_sum}")
         self.team2_label.setText(f"Suma - Opozycja: {opp_sum}")
