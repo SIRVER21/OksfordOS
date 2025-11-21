@@ -17,11 +17,11 @@ from PyQt5.QtWidgets import (
     QGridLayout,
     QShortcut,
     QTableWidget,
-    QTableWidgetItem,
     QHeaderView,
+    QFileDialog,
 )
 from PyQt5.QtCore import Qt, QTimer, QSettings
-from PyQt5.QtGui import QFont, QKeySequence, QFontMetrics
+from PyQt5.QtGui import QFont, QKeySequence, QFontMetrics, QIcon
 import json
 
 
@@ -281,6 +281,7 @@ class DebateJudgeApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("OksfordOS")
+        self.setWindowIcon(QIcon("logo.png"))
         self.setGeometry(100, 100, 1300, 900)
 
         # Main Timer
@@ -436,7 +437,16 @@ class DebateJudgeApp(QMainWindow):
         self.scores_group.setObjectName("scores_group")
         scores_layout = QVBoxLayout()
 
-        speakers_names = [f"Mówca {i + 1}" for i in range(8)]
+        speakers_names = [
+            "Pro 1",
+            "Pro 2",
+            "Pro 3",
+            "Pro 4",
+            "Opo 1",
+            "Opo 2",
+            "Opo 3",
+            "Opo 4",
+        ]
         self.scores_table = QTableWidget(1, 8)
         self.scores_table.setHorizontalHeaderLabels(speakers_names)
         self.scores_table.verticalHeader().setVisible(False)  # type: ignore
@@ -455,32 +465,10 @@ class DebateJudgeApp(QMainWindow):
             spin.setRange(0, 10)
             spin.setStyleSheet("QSpinBox {font-size: 18px; min-width: 50px;}")
             self.scores_table.setCellWidget(0, i, spin)
-            spin.valueChanged.connect(self.update_team_scores)
 
         scores_layout.addWidget(self.scores_table)
         self.scores_group.setLayout(scores_layout)
         right_layout.addWidget(self.scores_group)
-
-        sums_row = QWidget()
-        sums_layout = QHBoxLayout()
-        sums_layout.setContentsMargins(18, 7, 18, 7)
-        self.team1_label = QLabel("Suma - Propozycja: 0")
-        self.team2_label = QLabel("Suma - Opozycja: 0")
-        self.team1_label.setStyleSheet(
-            "background:rgba(255,255,255,0.10);color:#5e3a99;"
-            "font-size:19px;font-weight:700;border-radius:8px;padding:9px 24px;"
-        )
-        self.team2_label.setStyleSheet(
-            "background:rgba(255,255,255,0.10);color:#3a4599;"
-            "font-size:19px;font-weight:700;border-radius:8px;padding:9px 24px;"
-        )
-        sums_layout.addStretch(1)
-        sums_layout.addWidget(self.team1_label)
-        sums_layout.addSpacing(18)
-        sums_layout.addWidget(self.team2_label)
-        sums_layout.addStretch(1)
-        sums_row.setLayout(sums_layout)
-        scores_layout.addWidget(sums_row)
 
         right_container.setLayout(right_layout)
 
@@ -653,19 +641,15 @@ class DebateJudgeApp(QMainWindow):
         self.notatnik_box.setFocus()
         self.ensure_widget_visible(self.notatnik_box)
 
-    def update_team_scores(self):
-        prop_sum = sum(
-            self.scores_table.cellWidget(0, i).value()  # type: ignore
-            for i in range(0, 8, 2)
-        )
-        opp_sum = sum(
-            self.scores_table.cellWidget(0, i).value()  # type: ignore
-            for i in range(1, 8, 2)
-        )
-        self.team1_label.setText(f"Suma - Propozycja: {prop_sum}")
-        self.team2_label.setText(f"Suma - Opozycja: {opp_sum}")
-
-    def export_current_state(self, filename="session.json"):
+    def export_current_state(self, filename=None):
+        if filename is None:
+            filename, _ = QFileDialog.getSaveFileName(
+                self, "Zapisz stan", "", "Pliki JSON (*.json)"
+            )
+            if not filename:
+                return  # anulowano wybór pliku
+            if not filename.lower().endswith(".json"):
+                filename += ".json"
         data = {
             "speakers": [
                 {
@@ -687,7 +671,13 @@ class DebateJudgeApp(QMainWindow):
         }
         save_session_to_json(filename, data)
 
-    def import_state_from_json(self, filename="session.json"):
+    def import_state_from_json(self, filename=None):
+        if filename is None:
+            filename, _ = QFileDialog.getOpenFileName(
+                self, "Otwórz stan", "", "Pliki JSON (*.json)"
+            )
+            if not filename:
+                return  # Anulowano wybór pliku
         data = load_session_from_json(filename)
         for i, s in enumerate(self.speakers):
             s.info_text.setPlainText(data["speakers"][i]["info"])
@@ -707,7 +697,6 @@ def save_session_to_json(filename, data):
 
 def load_session_from_json(filename):
     with open(filename, "r", encoding="utf-8") as f:
-        # Jeśli chcesz jsonc z komentarzami (//), zakomentuj następne 2 linie i użyj tylko json.load(f)
         lines = [line for line in f if not line.strip().startswith("//")]
         return json.loads("".join(lines))
 
