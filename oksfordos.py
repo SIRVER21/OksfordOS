@@ -22,6 +22,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QTimer, QSettings
 from PyQt5.QtGui import QFont, QKeySequence, QFontMetrics
+import json
 
 
 def apply_theme(app, theme="Jasny"):
@@ -524,6 +525,9 @@ class DebateJudgeApp(QMainWindow):
 
         # Ustawienia
         QShortcut(QKeySequence("Ctrl+."), self, self.open_settings)
+        # Zapis i Wczytywanie plików json
+        QShortcut(QKeySequence("Ctrl+S"), self, self.export_current_state)  # Zapis
+        QShortcut(QKeySequence("Ctrl+O"), self, self.import_state_from_json)  # Odczyt
 
         # Przewijanie
         QShortcut(
@@ -660,6 +664,52 @@ class DebateJudgeApp(QMainWindow):
         )
         self.team1_label.setText(f"Suma - Propozycja: {prop_sum}")
         self.team2_label.setText(f"Suma - Opozycja: {opp_sum}")
+
+    def export_current_state(self, filename="session.json"):
+        data = {
+            "speakers": [
+                {
+                    "info": s.info_text.toPlainText(),
+                    "question1": s.question1.toPlainText(),
+                    "question2": s.question2.toPlainText(),
+                }
+                for s in self.speakers
+            ],
+            "ad_vocem": [
+                self.ad_vocem_1.text_edit.toPlainText(),
+                self.ad_vocem_2.text_edit.toPlainText(),
+            ],
+            "notatnik": self.notatnik_box.toPlainText(),
+            "punkty": [
+                self.scores_table.cellWidget(0, i).value()  # type: ignore
+                for i in range(self.scores_table.columnCount())
+            ],
+        }
+        save_session_to_json(filename, data)
+
+    def import_state_from_json(self, filename="session.json"):
+        data = load_session_from_json(filename)
+        for i, s in enumerate(self.speakers):
+            s.info_text.setPlainText(data["speakers"][i]["info"])
+            s.question1.setPlainText(data["speakers"][i]["question1"])
+            s.question2.setPlainText(data["speakers"][i]["question2"])
+        self.ad_vocem_1.text_edit.setPlainText(data["ad_vocem"][0])
+        self.ad_vocem_2.text_edit.setPlainText(data["ad_vocem"][1])
+        self.notatnik_box.setPlainText(data.get("notatnik", ""))
+        for i, val in enumerate(data["punkty"]):
+            self.scores_table.cellWidget(0, i).setValue(val)  # type: ignore
+
+
+def save_session_to_json(filename, data):
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def load_session_from_json(filename):
+    with open(filename, "r", encoding="utf-8") as f:
+        # Jeśli chcesz jsonc z komentarzami (//), zakomentuj następne 2 linie i użyj tylko json.load(f)
+        lines = [line for line in f if not line.strip().startswith("//")]
+        return json.loads("".join(lines))
 
 
 if __name__ == "__main__":
