@@ -24,6 +24,12 @@ from PyQt5.QtCore import Qt, QTimer, QSettings
 from PyQt5.QtGui import QFont, QKeySequence, QFontMetrics, QIcon
 import json
 
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+
 
 def apply_theme(app, theme="Jasny"):
     theme_files = {
@@ -266,6 +272,8 @@ class TimerPanel(QWidget):
         Alt+O - Strona w górę<br>
         Alt+P - Strona w dół<br>
         Ctrl+. - Ustawienia<br>
+        Ctrl+S - Zapisz<br>
+        Ctrl+O - Otwórz<br>
         </span>
         """)
 
@@ -516,6 +524,7 @@ class DebateJudgeApp(QMainWindow):
         # Zapis i Wczytywanie plików json
         QShortcut(QKeySequence("Ctrl+S"), self, self.export_current_state)  # Zapis
         QShortcut(QKeySequence("Ctrl+O"), self, self.import_state_from_json)  # Odczyt
+        QShortcut(QKeySequence("Ctrl+E"), self, self.export_to_pdf)  # Zapis PDF
 
         # Przewijanie
         QShortcut(
@@ -688,6 +697,116 @@ class DebateJudgeApp(QMainWindow):
         self.notatnik_box.setPlainText(data.get("notatnik", ""))
         for i, val in enumerate(data["punkty"]):
             self.scores_table.cellWidget(0, i).setValue(val)  # type: ignore
+
+    def export_to_pdf(self):
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "Zapisz jako PDF", "", "Pliki PDF (*.pdf)"
+        )
+        if not filename:
+            return
+        if not filename.lower().endswith(".pdf"):
+            filename += ".pdf"
+
+        # Tworzymy dokument PDF
+        doc = SimpleDocTemplate(filename, pagesize=A4)
+        elements = []
+
+        # Style
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            "CustomTitle",
+            parent=styles["Heading1"],
+            fontSize=24,
+            textColor=colors.HexColor("#27293C"),
+            spaceAfter=30,
+            alignment=1,  # centered
+        )
+
+        # Tytuł
+        elements.append(Paragraph("Raport Debaty", title_style))
+        elements.append(Spacer(1, 0.3 * inch))
+
+        # Tabela mówców
+        elements.append(Paragraph("Mówcy", styles["Heading2"]))
+
+        table_data = [["Mówca", "Informacje", "Pytanie 1", "Pytanie 2"]]
+        for i, speaker in enumerate(self.speakers):
+            table_data.append(
+                [
+                    f"Mówca {i + 1}",
+                    speaker.info_text.toPlainText()[:50] + "...",
+                    speaker.question1.toPlainText()[:30] + "...",
+                    speaker.question2.toPlainText()[:30] + "...",
+                ]
+            )
+
+        t = Table(table_data)
+        t.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 12),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ("WORDWRAP", (0, 0), (-1, -1), True),
+                ]
+            )
+        )
+        elements.append(t)
+        elements.append(Spacer(1, 0.3 * inch))
+
+        # Tabela punktów
+        elements.append(Paragraph("Punktacja", styles["Heading2"]))
+
+        scores_data = [
+            ["Pro 1", "Opo 1", "Pro 2", "Opo 2", "Pro 3", "Opo 3", "Pro 4", "Opo 4"]
+        ]
+        scores_row = []
+        for i in range(8):
+            val = self.scores_table.cellWidget(0, i).value()  # type: ignore
+            scores_row.append(str(val))
+        scores_data.append(scores_row)
+
+        scores_table = Table(scores_data)
+        scores_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 11),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.lightblue),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                ]
+            )
+        )
+        elements.append(scores_table)
+        elements.append(Spacer(1, 0.3 * inch))
+
+        # Ad Vocem
+        elements.append(Paragraph("Ad Vocem Propozycja", styles["Heading3"]))
+        elements.append(
+            Paragraph(self.ad_vocem_1.text_edit.toPlainText(), styles["Normal"])
+        )
+        elements.append(Spacer(1, 0.2 * inch))
+
+        elements.append(Paragraph("Ad Vocem Opozycja", styles["Heading3"]))
+        elements.append(
+            Paragraph(self.ad_vocem_2.text_edit.toPlainText(), styles["Normal"])
+        )
+        elements.append(Spacer(1, 0.2 * inch))
+
+        # Notatnik
+        elements.append(Paragraph("Notatnik", styles["Heading3"]))
+        elements.append(Paragraph(self.notatnik_box.toPlainText(), styles["Normal"]))
+
+        # Budowanie PDF
+        doc.build(elements)
 
 
 def save_session_to_json(filename, data):
