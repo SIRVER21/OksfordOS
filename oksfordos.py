@@ -1,4 +1,5 @@
 import sys
+import os
 from PyQt5.QtWidgets import (
     QApplication,
     QComboBox,
@@ -24,14 +25,19 @@ from PyQt5.QtCore import Qt, QTimer, QSettings
 from PyQt5.QtGui import QFont, QKeySequence, QFontMetrics, QIcon
 import json
 
-from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib import colors
 
 
-def apply_theme(app, theme="Jasny"):
+def resource_path(relative_path):
+    base_path = getattr(sys, "_MEIPASS", os.path.abspath("."))
+    return os.path.join(base_path, relative_path)
+
+
+def apply_theme(app, theme="Ciemny"):
     theme_files = {
         "Jasny": "light.qss",
         "Ciemny": "dark.qss",
@@ -41,8 +47,8 @@ def apply_theme(app, theme="Jasny"):
         "Jasny zielony": "light-green.qss",
         "Lawendowy": "lawendowy.qss",
     }
-    file = theme_files.get(theme, "light.qss")
-    with open(file, "r") as f:
+    file = theme_files.get(theme, "dark.qss")
+    with open(resource_path(file), "r") as f:
         app.setStyleSheet(f.read())
 
 
