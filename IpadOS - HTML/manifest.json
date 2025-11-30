@@ -1,0 +1,16 @@
+{
+  "name": "OksfordOS",
+  "short_name": "OksfordOS",
+  "description": "Aplikacja do sędziowania debat oksfordzkich",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1b26",
+  "theme_color": "#27293C",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
