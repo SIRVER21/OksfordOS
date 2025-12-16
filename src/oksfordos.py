@@ -408,6 +408,18 @@ class DebateJudgeApp(QMainWindow):
     def init_ui(self):
         main_widget = QWidget()
         main_layout = QHBoxLayout()
+        top_layout = QVBoxLayout()
+
+        self.teza_label = QLabel()
+        self.teza_label.setWordWrap(True)
+        self.teza_label.setAlignment(Qt.AlignCenter)  # type: ignore
+        self.teza_label.setStyleSheet("font-size: 18px; font-weight: 600; margin: 8px;")
+
+        settings = QSettings("OksfordOS", "DebateJudgeApp")
+        teza = settings.value("Teza", "")
+        self.teza_label.setText(teza)
+
+        top_layout.addWidget(self.teza_label)
 
         # Timer panel po lewej
         self.timer_panel = TimerPanel()
