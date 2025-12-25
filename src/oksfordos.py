@@ -21,7 +21,7 @@ from PyQt5.QtWidgets import (
     QHeaderView,
     QFileDialog,
 )
-from PyQt5.QtCore import Qt, QTimer, QSettings
+from PyQt5.QtCore import QTimeZone, Qt, QTimer, QSettings
 from PyQt5.QtGui import QFont, QKeySequence, QFontMetrics, QIcon
 import json
 
@@ -86,6 +86,15 @@ class SettingsDialog(QDialog):
 
         layout = QVBoxLayout()
 
+        teza_group = QGroupBox("Teza Debaty")
+        teza_layout = QVBoxLayout()
+        self.teza_edit = QTextEdit()
+        self.teza_edit.setPlaceholderText("Wpisz tezę...")
+        self.teza_edit.setFixedHeight(60)
+        teza_layout.addWidget(self.teza_edit)
+        teza_group.setLayout(teza_layout)
+        layout.addWidget(teza_group)
+
         # Main Timer
         main_timer_group = QGroupBox("Czas głównego timera")
         main_timer_layout = QHBoxLayout()
@@ -131,6 +140,10 @@ class SettingsDialog(QDialog):
         layout.addWidget(theme_group)
 
         self.settings = QSettings("OksfordOS", "DebateJudgeApp")
+
+        teza = self.settings.value("teza", "")
+        self.teza_edit.setPlainText(teza)
+
         current_theme = self.settings.value("theme", "Jasny")
         self.theme_combo.setCurrentText(current_theme)
 
@@ -151,6 +164,8 @@ class SettingsDialog(QDialog):
         self.setLayout(layout)
 
     def save_settings(self):
+        teza = self.teza_edit.toPlainText()
+        self.settings.setValue("teza", teza)
         theme = self.theme_combo.currentText()
         self.settings.setValue("theme", theme)
         m = self.main_timer_minutes.value()
@@ -337,9 +352,10 @@ class DebateJudgeApp(QMainWindow):
         # Reload timer defaults
         self.reset_timer()
         self.reset_ad_timer()
+        teza = settings.value("teza", "")
+        self.teza_label.setText(teza)
 
-        # Timer
-
+    # Timer
     def start_timer(self):
         if not self.timer_running:
             self.timer_qt.start(1000)  # Tick co sekunde
@@ -504,8 +520,11 @@ class DebateJudgeApp(QMainWindow):
         self.scroll_area.setWidget(right_container)
         self.scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
+        top_layout.addWidget(self.teza_label)
+        top_layout.addWidget(self.scroll_area)
+
         main_layout.addWidget(self.timer_panel)
-        main_layout.addWidget(self.scroll_area)
+        main_layout.addLayout(top_layout)
 
         main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
