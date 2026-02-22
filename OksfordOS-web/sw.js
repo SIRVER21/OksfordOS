@@ -1,10 +1,10 @@
-const CACHE_NAME = 'oksfordos-v2';
+const CACHE_NAME = 'oksfordos-v4';
 const urlsToCache = [
     '/',
     '/index.html',
     '/manifest.json',
     '/sw.js',
-    '/logo.png'  // jeśli masz
+    '/logo.png'
 ];
 
 self.addEventListener('install', event => {

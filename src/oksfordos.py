@@ -5,10 +5,12 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QDialog,
     QGroupBox,
+    QLineEdit,
     QPushButton,
     QScrollArea,
     QSizePolicy,
     QSpinBox,
+    QStackedWidget,
     QTextEdit,
     QWidget,
     QMainWindow,
@@ -50,6 +52,61 @@ def apply_theme(app, theme="Ciemny"):
     file = theme_files.get(theme, "dark.qss")
     with open(resource_path(file), "r") as f:
         app.setStyleSheet(f.read())
+
+
+class ClickableTezaLabel(QStackedWidget):
+    """Switches between a label and a line edit on click for inline teza editing."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.label = QLabel()
+        self.label.setAlignment(Qt.AlignCenter)  # type: ignore
+        self.label.setStyleSheet("font-size: 18px; font-weight: 600; margin: 8px; cursor: pointer;")
+        self.label.setWordWrap(True)
+        self.label.setToolTip("Kliknij aby edytować tezę")
+
+        self.editor = QLineEdit()
+        self.editor.setAlignment(Qt.AlignCenter)  # type: ignore
+        self.editor.setStyleSheet("font-size: 18px; font-weight: 600; margin: 8px; padding: 2px;")
+        self.editor.returnPressed.connect(self.finish_edit)
+        self.editor.editingFinished.connect(self.finish_edit)
+
+        self.addWidget(self.label)
+        self.addWidget(self.editor)
+        self.setCurrentWidget(self.label)
+
+        self.label.mousePressEvent = lambda e: self.start_edit()
+
+    def setText(self, text):
+        display = text if text.strip() else "Kliknij aby wpisać tezę debaty"
+        self.label.setText(f"Teza: {display}" if text.strip() else display)
+        self._raw_text = text
+
+    def text(self):
+        return getattr(self, '_raw_text', '')
+
+    def start_edit(self):
+        self.editor.setText(self._raw_text if hasattr(self, '_raw_text') else '')
+        self.setCurrentWidget(self.editor)
+        self.editor.setFocus()
+        self.editor.selectAll()
+
+    def finish_edit(self):
+        if self.currentWidget() != self.editor:
+            return
+        new_text = self.editor.text().strip()
+        self._raw_text = new_text
+        display = new_text if new_text else "Kliknij aby wpisać tezę debaty"
+        self.label.setText(f"Teza: {display}" if new_text else display)
+        self.setCurrentWidget(self.label)
+        # Save to QSettings
+        settings = QSettings("OksfordOS", "DebateJudgeApp")
+        settings.setValue("teza", new_text)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape and self.currentWidget() == self.editor:  # type: ignore
+            self.setCurrentWidget(self.label)
+        else:
+            super().keyPressEvent(event)
 
 
 class AutoResizingTextEdit(QTextEdit):
@@ -426,13 +483,11 @@ class DebateJudgeApp(QMainWindow):
         main_layout = QHBoxLayout()
         top_layout = QVBoxLayout()
 
-        self.teza_label = QLabel()
-        self.teza_label.setWordWrap(True)
-        self.teza_label.setAlignment(Qt.AlignCenter)  # type: ignore
-        self.teza_label.setStyleSheet("font-size: 18px; font-weight: 600; margin: 8px;")
+        self.teza_label = ClickableTezaLabel()
+        self.teza_label.setFixedHeight(50)
 
         settings = QSettings("OksfordOS", "DebateJudgeApp")
-        teza = settings.value("Teza", "")
+        teza = settings.value("teza", "")
         self.teza_label.setText(teza)
 
         top_layout.addWidget(self.teza_label)

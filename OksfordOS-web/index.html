@@ -61,11 +61,14 @@
         }
         
         .info-text, .question-text, .ad-vocem-text, .notatnik { 
-            width: 100%; min-height: 40px; max-height: 200px; 
+            width: 100%; min-height: 40px;
             background: rgba(255,255,255,0.05); border: 1px solid #3b4261;
             border-radius: 4px; padding: 10px; font-size: 1.1em;
-            resize: vertical; color: var(--text-primary);
+            resize: none; overflow: hidden;
+            color: var(--text-primary);
             font-family: inherit;
+            line-height: 1.5;
+            box-sizing: border-box;
         }
         .info-text:focus, .question-text:focus, .ad-vocem-text:focus, .notatnik:focus {
             outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(122,162,247,0.2);
@@ -86,6 +89,7 @@
             background: var(--bg-secondary); padding: 20px; border-radius: 8px; 
             border: 1px solid #3b4261; margin-top: 20px;
         }
+        .scores-section.hidden { display: none; }
         .scores-title { font-weight: bold; margin-bottom: 15px; }
         .scores-grid {
             display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
@@ -115,7 +119,35 @@
         }
         .modal h3 { margin-bottom: 20px; }
         .modal-row { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
-        .modal input { flex: 1; padding: 8px; border: 1px solid #3b4261; border-radius: 4px; background: rgba(255,255,255,0.05); color: var(--text-primary); }
+        .modal input[type="text"], .modal input[type="number"] { flex: 1; padding: 8px; border: 1px solid #3b4261; border-radius: 4px; background: rgba(255,255,255,0.05); color: var(--text-primary); }
+        .modal-checkbox-row { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; cursor: pointer; }
+        .modal-checkbox-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); }
+        
+        .teza-bar {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid #3b4261;
+            padding: 8px 20px;
+            text-align: center;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+        .teza-bar:hover { background: #2d3149; }
+        .teza-bar .teza-label-prefix { 
+            color: var(--text-secondary); font-size: 0.85em; margin-right: 6px;
+        }
+        .teza-bar .teza-text {
+            font-size: 1em; font-weight: 600; color: var(--accent);
+            min-height: 1.2em; display: inline;
+        }
+        .teza-bar .teza-hint {
+            color: var(--text-secondary); font-size: 0.75em; margin-left: 8px; opacity: 0.6;
+        }
+        .teza-edit-input {
+            background: transparent; border: none; border-bottom: 2px solid var(--accent);
+            color: var(--accent); font-size: 1em; font-weight: 600;
+            text-align: center; outline: none; width: 60%;
+        }
         
         @media (max-width: 768px) {
             .timer-panel { width: 150px; }
@@ -146,11 +178,15 @@ Alt+R - Reset mini
 Alt+O/P - Scroll
 Ctrl+. - Ustawienia
 Ctrl+S/O - JSON
+<b>Stworzone przez Piotra Gojżewskiego</b>
             </div>
         </div>
         
-        <div class="main-content">
-            <div class="scroll-container">
+        <div class="main-content" style="display:flex; flex-direction:column;">
+            <div class="teza-bar" id="tezaBar" title="Kliknij aby edytować tezę">
+                <span class="teza-label-prefix">Teza:</span><span class="teza-text" id="tezaText">Kliknij aby wpisać tezę debaty</span><span class="teza-hint">✎</span>
+            </div>
+            <div class="scroll-container" style="flex:1;">
                 <div class="speaker-grid" id="speakerGrid"></div>
                 
                 <div class="ad-vocem-row">
@@ -194,6 +230,13 @@ Ctrl+S/O - JSON
             <h3>Ustawienia</h3>
             
             <div class="modal-row">
+                <label>Teza debaty:</label>
+            </div>
+            <div class="modal-row">
+                <input type="text" id="tezaInput" placeholder="Wpisz tezę debaty..." style="width:100%;">
+            </div>
+            
+            <div class="modal-row">
                 <label>Główny timer</label>
             </div>
             <div class="modal-row">
@@ -208,11 +251,66 @@ Ctrl+S/O - JSON
                 <input type="number" id="adSec" min="1" max="300" value="30">
             </div>
             
+            <label class="modal-checkbox-row">
+                <input type="checkbox" id="showScores" checked>
+                <span>Pokaż punktację</span>
+            </label>
+            
             <button style="width:100%; padding:12px; background:var(--accent); border:none; border-radius:6px; color:white; font-weight:bold; margin-top:20px;" id="saveSettings">Zapisz</button>
+            <button style="width:100%; padding:12px; background:var(--danger); border:none; border-radius:6px; color:white; font-weight:bold; margin-top:10px;" id="clearCacheBtn">🗑️ Wyczyść cache i odśwież</button>
         </div>
     </div>
 
     <script>
+        // Teza
+        function loadTeza() {
+            const teza = localStorage.getItem('teza') || '';
+            const el = document.getElementById('tezaText');
+            el.textContent = teza || 'Kliknij aby wpisać tezę debaty';
+        }
+        
+        function saveTeza(val) {
+            localStorage.setItem('teza', val);
+            document.getElementById('tezaText').textContent = val || 'Kliknij aby wpisać tezę debaty';
+        }
+        
+        document.getElementById('tezaBar').addEventListener('click', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            const bar = document.getElementById('tezaBar');
+            const currentTeza = localStorage.getItem('teza') || '';
+            bar.innerHTML = `<span class="teza-label-prefix">Teza:</span><input class="teza-edit-input" id="tezaEditInput" type="text" value="${currentTeza.replace(/"/g, '&quot;')}" placeholder="Wpisz tezę debaty...">`;
+            const input = document.getElementById('tezaEditInput');
+            input.focus();
+            input.select();
+            let finished = false;
+
+            function finish(focusSpeaker) {
+                if (finished) return;
+                finished = true;
+                const val = input.value.trim();
+                saveTeza(val);
+                bar.innerHTML = `<span class="teza-label-prefix">Teza:</span><span class="teza-text" id="tezaText">${val || 'Kliknij aby wpisać tezę debaty'}</span><span class="teza-hint">✎</span>`;
+                if (focusSpeaker) {
+                    // Focus first speaker info box
+                    const firstInfo = els.speakerGrid.children[0]?.querySelector('.info-text');
+                    if (firstInfo) firstInfo.focus();
+                }
+            }
+
+            input.addEventListener('keydown', (ev) => {
+                if (ev.key === 'Enter') {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    finish(true); // focus speaker on Enter
+                }
+                if (ev.key === 'Escape') {
+                    finished = true;
+                    bar.innerHTML = `<span class="teza-label-prefix">Teza:</span><span class="teza-text" id="tezaText">${currentTeza || 'Kliknij aby wpisać tezę debaty'}</span><span class="teza-hint">✎</span>`;
+                }
+            });
+            input.addEventListener('blur', () => finish(false)); // blur does NOT focus speaker
+        });
+        
         // PWA Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js');
@@ -272,24 +370,42 @@ Ctrl+S/O - JSON
                 `;
                 div.querySelector('.info-text').addEventListener('input', (e) => {
                     appState.speakers[i].info = e.target.value;
-                    toggleQuestions(i);
                 });
                 div.querySelectorAll('.question-text').forEach((q, qi) => {
                     q.addEventListener('input', (e) => {
                         appState.speakers[i][`question${qi + 1}`] = e.target.value;
                     });
                 });
+                // Auto-resize
+                div.querySelectorAll('textarea').forEach(setupAutoResize);
                 els.speakerGrid.appendChild(div);
             });
             toggleQuestions(appState.currentSpeaker);
         }
         
         function toggleQuestions(speakerIdx) {
-            const questions = els.speakerGrid.children[speakerIdx]?.querySelectorAll('.question-text');
-            if (questions) {
-                questions[0].classList.toggle('active', appState.speakers[speakerIdx].info.trim());
-                questions[1].classList.toggle('active', appState.speakers[speakerIdx].question1.trim());
+            const speakerDiv = els.speakerGrid.children[speakerIdx];
+            if (!speakerDiv) return;
+            const questions = speakerDiv.querySelectorAll('.question-text');
+            // Show q1 only if info has content AND it's already been navigated to (has 'active')
+            // This is used only during import to restore visible state
+            if (appState.speakers[speakerIdx].question1.trim()) {
+                questions[0].classList.add('active');
             }
+            if (appState.speakers[speakerIdx].question2.trim()) {
+                questions[1].classList.add('active');
+            }
+        }
+        
+        // Auto-resize textareas
+        function autoResize(el) {
+            el.style.height = 'auto';
+            el.style.height = el.scrollHeight + 'px';
+        }
+        
+        function setupAutoResize(el) {
+            el.addEventListener('input', () => autoResize(el));
+            autoResize(el);
         }
         
         // Timery
@@ -330,11 +446,12 @@ Ctrl+S/O - JSON
         
         function resetMainTimer() {
             pauseMainTimer();
-            appState.mainTimer.seconds = parseInt(localStorage.getItem('mainTimer') || '240');
+            const m = parseInt(localStorage.getItem('mainMin') || '4');
+            const s = parseInt(localStorage.getItem('mainSec') || '0');
+            appState.mainTimer.seconds = m * 60 + s;
             updateTimers();
         }
         
-        // Analogicznie dla adTimer...
         function startAdTimer() {
             if (!appState.adTimer.running) {
                 appState.adTimer.interval = setInterval(() => {
@@ -362,7 +479,7 @@ Ctrl+S/O - JSON
         
         function resetAdTimer() {
             pauseAdTimer();
-            appState.adTimer.seconds = parseInt(localStorage.getItem('adTimer') || '30');
+            appState.adTimer.seconds = parseInt(localStorage.getItem('adSec') || '30');
             updateTimers();
         }
         
@@ -394,13 +511,29 @@ Ctrl+S/O - JSON
             if (!speakerDiv) return;
             
             const texts = speakerDiv.querySelectorAll('textarea');
-            let targetIdx = appState.currentSection;
-            
-            if (targetIdx === 1 && !texts[1].classList.contains('active')) targetIdx = 0;
-            if (targetIdx === 2 && !texts[2].classList.contains('active')) targetIdx = 1;
-            
-            texts[targetIdx].focus();
-            texts[targetIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // section 0 = info, 1 = question1, 2 = question2
+            if (appState.currentSection === 0) {
+                texts[0].focus();
+                texts[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else if (appState.currentSection === 1) {
+                // Show q1 and focus it
+                texts[1].classList.add('active');
+                texts[1].focus();
+                texts[1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else if (appState.currentSection === 2) {
+                // Only show q2 if q1 has content
+                if (appState.speakers[appState.currentSpeaker].question1.trim()) {
+                    texts[2].classList.add('active');
+                    texts[2].focus();
+                    texts[2].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    // Fall back to q1
+                    appState.currentSection = 1;
+                    texts[1].classList.add('active');
+                    texts[1].focus();
+                    texts[1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
         }
         
         function jumpToSpeaker(idx) {
@@ -414,8 +547,11 @@ Ctrl+S/O - JSON
             if (activeEl && activeEl.tagName === 'TEXTAREA') {
                 const start = activeEl.selectionStart;
                 const end = activeEl.selectionEnd;
-                activeEl.value = activeEl.value.substring(0, start) + '\n------------------\n' + activeEl.value.substring(end);
-                activeEl.setSelectionRange(start + 18, start + 18);
+                const separator = '\n------------------\n';
+                activeEl.value = activeEl.value.substring(0, start) + separator + activeEl.value.substring(end);
+                const newPos = start + separator.length;
+                activeEl.setSelectionRange(newPos, newPos);
+                autoResize(activeEl);
             }
         }
         
@@ -454,7 +590,7 @@ Ctrl+S/O - JSON
             updateTimers();
         }
         
-        els.saveSettings.onclick = () => {
+        els.saveSettings.addEventListener('click', () => {
             const mainMin = document.getElementById('mainMin').value;
             const mainSec = document.getElementById('mainSec').value;
             const adSec = document.getElementById('adSec').value;
@@ -463,19 +599,39 @@ Ctrl+S/O - JSON
             localStorage.setItem('mainSec', mainSec);
             localStorage.setItem('adSec', adSec);
             
+            const teza = document.getElementById('tezaInput').value.trim();
+            saveTeza(teza);
+            
+            const showScores = document.getElementById('showScores').checked;
+            localStorage.setItem('showScores', showScores);
+            applyScoresVisibility();
+            
             appState.mainTimer.seconds = parseInt(mainMin) * 60 + parseInt(mainSec);
             appState.adTimer.seconds = parseInt(adSec);
             updateTimers();
             
             els.settingsModal.style.display = 'none';
-        };
+        });
         
-        els.settingsBtn.onclick = () => {
+        document.getElementById('clearCacheBtn').addEventListener('click', async () => {
+            if (!confirm('Wyczyścić cache? Aplikacja zostanie odświeżona.')) return;
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (const reg of registrations) await reg.unregister();
+            }
+            const keys = await caches.keys();
+            await Promise.all(keys.map(key => caches.delete(key)));
+            location.reload(true);
+        });
+        
+        els.settingsBtn.addEventListener('click', () => {
             document.getElementById('mainMin').value = Math.floor(appState.mainTimer.seconds / 60);
             document.getElementById('mainSec').value = appState.mainTimer.seconds % 60;
             document.getElementById('adSec').value = appState.adTimer.seconds;
+            document.getElementById('tezaInput').value = localStorage.getItem('teza') || '';
+            document.getElementById('showScores').checked = localStorage.getItem('showScores') !== 'false';
             els.settingsModal.style.display = 'block';
-        };
+        });
         
         // Zamknij modal kliknięciem poza
         window.onclick = (e) => {
@@ -530,6 +686,8 @@ Ctrl+S/O - JSON
                             const data = JSON.parse(ev.target.result);
                             appState.speakers = data.speakers || appState.speakers;
                             createSpeakers();
+                            // Restore visible questions for speakers that have content
+                            appState.speakers.forEach((_, i) => toggleQuestions(i));
                             els.adVocemProp.value = data.adVocem?.[0] || '';
                             els.adVocemOpp.value = data.adVocem?.[1] || '';
                             els.notatnik.value = data.notatnik || '';
@@ -547,28 +705,41 @@ Ctrl+S/O - JSON
         }
         
         function setupEventListeners() {
-            els.adVocemProp.oninput = () => localStorage.setItem('adVocemProp', els.adVocemProp.value);
-            els.adVocemOpp.oninput = () => localStorage.setItem('adVocemOpp', els.adVocemOpp.value);
-            els.notatnik.oninput = () => localStorage.setItem('notatnik', els.notatnik.value);
+            els.adVocemProp.oninput = () => { localStorage.setItem('adVocemProp', els.adVocemProp.value); autoResize(els.adVocemProp); };
+            els.adVocemOpp.oninput = () => { localStorage.setItem('adVocemOpp', els.adVocemOpp.value); autoResize(els.adVocemOpp); };
+            els.notatnik.oninput = () => { localStorage.setItem('notatnik', els.notatnik.value); autoResize(els.notatnik); };
+            setupAutoResize(els.adVocemProp);
+            setupAutoResize(els.adVocemOpp);
+            setupAutoResize(els.notatnik);
             
-            // Auto-save scores
             els.scoreInputs.forEach((input, i) => {
                 input.onchange = () => localStorage.setItem(`score${i}`, input.value);
             });
         }
         
+        function applyScoresVisibility() {
+            const show = localStorage.getItem('showScores') !== 'false';
+            document.querySelector('.scores-section').classList.toggle('hidden', !show);
+        }
+        
         // Load saved data
         window.addEventListener('load', () => {
+            loadTeza();
             els.adVocemProp.value = localStorage.getItem('adVocemProp') || '';
             els.adVocemOpp.value = localStorage.getItem('adVocemOpp') || '';
             els.notatnik.value = localStorage.getItem('notatnik') || '';
             els.scoreInputs.forEach((input, i) => {
                 input.value = localStorage.getItem(`score${i}`) || '0';
             });
+            setTimeout(() => {
+                autoResize(els.adVocemProp);
+                autoResize(els.adVocemOpp);
+                autoResize(els.notatnik);
+            }, 0);
+            applyScoresVisibility();
         });
         
         init();
     </script>
 </body>
 </html>
-
