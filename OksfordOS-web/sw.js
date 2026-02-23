@@ -1,4 +1,4 @@
-const CACHE_NAME = 'oksfordos-v4';
+const CACHE_NAME = 'oksfordos-v5';
 const urlsToCache = [
     '/',
     '/index.html',
@@ -8,45 +8,49 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
-    self.skipWaiting();  // Aktywuj natychmiast
+    self.skipWaiting();
     event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then(cache => {
-                console.log('Cache opened');
-                return cache.addAll(urlsToCache);
-            })
+        caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
     );
 });
 
 self.addEventListener('activate', event => {
     event.waitUntil(
-        caches.keys().then(cacheNames => {
-            return Promise.all(
-                cacheNames.map(cacheName => {
-                    if (cacheName !== CACHE_NAME) {
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        })
+        Promise.all([
+            // Usuń stare cache
+            caches.keys().then(cacheNames =>
+                Promise.all(
+                    cacheNames.map(name => {
+                        if (name !== CACHE_NAME) return caches.delete(name);
+                    })
+                )
+            ),
+            // Przejmij kontrolę natychmiast
+            self.clients.claim()
+        ])
     );
 });
 
 self.addEventListener('fetch', event => {
-    // Cache-first dla plików statycznych
-    event.respondWith(
-        caches.match(event.request)
-            .then(response => {
-                // Zwróć z cache jeśli istnieje
-                if (response) {
+    const url = new URL(event.request.url);
+
+    // Dla HTML – zawsze próbuj sieci, cache tylko jako fallback offline
+    if (event.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname === '/') {
+        event.respondWith(
+            fetch(event.request)
+                .then(response => {
+                    // Zaktualizuj cache świeżą wersją
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
                     return response;
-                }
-                // Fallback do sieci
-                return fetch(event.request).catch(() => {
-                    // Offline fallback - pokaż stronę główną
-                    return caches.match('/index.html');
-                });
-            })
+                })
+                .catch(() => caches.match(event.request))
+        );
+        return;
+    }
+
+    // Dla reszty – cache-first (manifest, logo, sw.js)
+    event.respondWith(
+        caches.match(event.request).then(response => response || fetch(event.request))
     );
 });
-
